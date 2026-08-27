@@ -14,20 +14,27 @@ import org.springframework.web.servlet.View;
 
 import java.util.*;
 
+// OperationCustomizer: springdoc-openapi가 Swagger 문서를 만들때 각 API operation을 후처리할 수 있게 해주는 인터페이스
 @Component
 public class ApiResponseCustomizer implements OperationCustomizer {
+    // OperationCustomizer: springdoc가 컨트롤러의 API 문서를 만든 후, 그 결과를 추가로 수정할 수 있게 해주는 인터페이스
+    // operation: 현재 API의 Swagger 문서 정보
+    // handlerMethod: 현재 API를 처리하는 컨트롤러 메서드 정보
+    // 즉 handlerMethod를 통해 어노테이션을 읽고 operation에 Swagger 응답을 추가
+
     private final View error;
 
     public ApiResponseCustomizer(View error) {
         this.error = error;
     }
-    // OperationCustomizer: 어노테이션을 빌드될때 OperationCustomizer 구현체의 customize를 실행을함
 
-    // Operation 객체가 어노테이션 실행하기 위해 필요한 최상위 객체
+    // 어노테이션을 빌드될때 OperationCustomizer 구현체의 customize를 실행을함
     @Override
     public Operation customize(Operation operation, HandlerMethod handlerMethod) {
-        // 우리가 만든 어노테이션 정보 가져오기 -> 이 어노테이션 안에 value같은 정보가 들어가가 있음
+
+        // 컨트롤러 메서드에 붙어 있는 @CustomApiResponse 정보 가져오기
         CustomApiResponse annotation = handlerMethod.getMethodAnnotation(CustomApiResponse.class);
+        // 해당 어노테이션이 붙어 있지 않은 컨트롤러인 경우 원래 문서를 그대로 반환
         if (annotation == null) {
             return operation;
         }
