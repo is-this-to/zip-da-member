@@ -1,3 +1,138 @@
 spring:
   application:
     name: zip-da-member
+    version: v1
+  web:
+    error:
+      include-stacktrace: always
+      include-message: always
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    # 메일 발송 요청자 이메일
+    username: ${MAIL_USER}
+    # 메일 발송 요청자 앱 비밀번호
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          # Gmail SMTP 서버에 계정 인증을 하겠다
+          auth: true
+          # Gmail 서버에 연결할 때 기다리는 시간
+          connectiontimeout: 5000
+          # 서버 응답을 읽을 때 기다리는 시간
+          timeout: 5000
+          # 메일 데이터를 전송할 때 기다리는 시간
+          writetimeout: 5000
+          starttls:
+            # SMTP 서버와 평문으로 통신하지 않고 TLS 보안 연결 사용
+            enable: true
+
+  # DB
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 30000
+
+  # JPA
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+    defer-datasource-initialization: true
+  sql:
+    init:
+      data-locations: classpath*:dummy/*.sql
+      mode: always
+      platform: all
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao: # registrationId = kakao
+            # 카카오 개발자 센터에서 발급받은 REST API 키
+            client-id: ${KAKAO_CLIENT_ID}
+            # 추가적인 보안 인증키 (카카오 내 설정에서 활성화 하지 않은 경우는 생략 가능)
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            # 카카오 로그인을 마친 후 카카오 인증 서버가 인가 코드 전달 받을 콜백 주소
+            redirect-uri: "{GATEWAY_URI}/api/auth/oauth2/callback/{registrationId}" # user가 설정한 baseUrl로 리다이렉트
+            # OAuth2의 가장 대표적인 인증 방식 (인가 코드)
+            authorization-grant-type: authorization_code
+            # client_id와 secret을 전송할 때, Http Post Body 형태로 데이터를 전송
+            client-authentication-method: client_secret_post
+            # 카카오로부터 전달 받고자 하는 사용자 정보 설정
+            scope:
+              - profile_nickname
+              - profile_image
+              - account_email
+        provider:
+          kakao:
+            # 사용자에게 카카오 로그인 창을 띄어주는 uri
+            authorization-uri: "https://kauth.kakao.com/oauth/authorize"
+            # 로그인 성공 후 전달받은 인가 코드로 Access Token을 발급 받는 URL
+            token-uri: "https://kauth.kakao.com/oauth/token"
+            # 발급받은 Access Token을 이용해서 실제 사용자 프로필 정보를 가져오는 URL
+            user-info-uri: "https://kapi.kakao.com/v2/user/me"
+            # 카카오 응답에서 사용자 식별을 위한 필드명
+            user-name-attribute: id
+
+
+# Springdoc Openapi
+springdoc:
+  # 클라이언트가 서버로 데이터를 보낼 때의 기본 형식을 지정하는 속성
+  default-consumes-media-type: application/json
+  # 서버가 클라이언트로 데이터를 보낼 때의 기본 형식을 지정하는 속성
+  default-produces-media-type: application/json
+  swagger-ui:
+    # swagger UI 접속 차단
+    enabled: false
+  api-docs:
+    # OpenAPI 스펙을 JSON 파일로 확인할 수 있는 경로
+    path: /api-docs
+  open-api:
+    servers:
+      - url: ${GATEWAY_URI} # GATEWAY_URI=http://localhost:8080, openAPI 문서에 표시되는 API 기본 호출 주소
+        description: ${APP_DESCRIPTION}
+
+# Log
+logging:
+  file:
+    name: logs/error.log
+  level:
+    root: info
+    com.zipdamember.domain: debug
+    com.zipdamember.global: debug
+
+# minio
+minio:
+  minio-endpoint: ${MINIO_ENDPOINT}
+  minio-bucket: ${MINIO_BUCKET}
+  minio-access-key: ${MINIO_ACCESS_KEY}
+  minio-secret-key: ${MINIO_SECRET_KEY}
+  minio-profile-path: ${MINIO_PROFILE_PATH}
+  allow-image-extensions: [
+    "image/jpg",
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp"
+  ]
+
+# Sub Service
+#sub-service:
+#  frontend-callback-uri: ${FRONTEND_CALLBACK_URI}
