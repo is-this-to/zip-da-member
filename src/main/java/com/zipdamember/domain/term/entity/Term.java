@@ -45,7 +45,7 @@ public class Term {
 
     @CreatedDate
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime created_at;
+    private LocalDateTime createdAt;
 
     @PrePersist
     private void generateTermId() {
