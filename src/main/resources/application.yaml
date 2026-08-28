@@ -1,3 +1,8 @@
+server:
+  # 환경변수로 분리하는 이유
+  # 1. 배포의 편리성-환경별로 코드 수정 불필요
+  # 2. 보안강화-하드코딩 방지 및 민감정보 보호
+  port: ${APP_PORT}
 spring:
   application:
     name: zip-da-member
