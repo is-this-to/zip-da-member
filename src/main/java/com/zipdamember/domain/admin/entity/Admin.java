@@ -1,6 +1,6 @@
 package com.zipdamember.domain.admin.entity;
 
-import com.zipdamember.global.jpa.tsid.TsidGenerated;
+import com.github.f4b6a3.tsid.TsidCreator;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,7 +23,6 @@ import java.time.LocalDateTime;
 @Setter
 public class Admin {
     @Id
-    @TsidGenerated
     @Column(
         name = "admin_id",
         nullable = false,
@@ -77,4 +76,11 @@ public class Admin {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @PrePersist
+    private void generateAdminId() {
+        if (adminId == null) {
+            adminId = TsidCreator.getTsid().toLong();
+        }
+    }
 }

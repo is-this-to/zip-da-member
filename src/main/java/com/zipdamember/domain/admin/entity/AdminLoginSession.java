@@ -1,9 +1,10 @@
 package com.zipdamember.domain.admin.entity;
 
-import com.zipdamember.global.jpa.tsid.TsidGenerated;
+import com.github.f4b6a3.tsid.TsidCreator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -18,7 +19,6 @@ import java.time.LocalDateTime;
 public class AdminLoginSession {
 
     @Id
-    @TsidGenerated
     @Column(
             name = "session_id",
             nullable = false,
@@ -49,4 +49,11 @@ public class AdminLoginSession {
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
+
+    @PrePersist
+    private void generateSessionId() {
+        if (sessionId == null) {
+            sessionId = TsidCreator.getTsid().toLong();
+        }
+    }
 }

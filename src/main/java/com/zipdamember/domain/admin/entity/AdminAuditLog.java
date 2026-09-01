@@ -1,17 +1,18 @@
 package com.zipdamember.domain.admin.entity;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.github.f4b6a3.tsid.TsidCreator;
 import com.zipdamember.global.constant.AdminAuditActorType;
 import com.zipdamember.global.constant.AdminAuditResult;
 import com.zipdamember.global.constant.AdminAuditTargetService;
 import com.zipdamember.global.constant.AdminRoleCode;
-import com.zipdamember.global.jpa.tsid.TsidGenerated;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -31,7 +32,6 @@ import java.time.LocalDateTime;
 public class AdminAuditLog {
 
     @Id
-    @TsidGenerated
     @Column(
             name = "audit_log_id",
             nullable = false,
@@ -97,4 +97,11 @@ public class AdminAuditLog {
     @CreatedDate
     @Column(name = "occurred_at", nullable = false, updatable = false)
     private LocalDateTime occurredAt;
+
+    @PrePersist
+    private void generateAuditLogId() {
+        if (auditLogId == null) {
+            auditLogId = TsidCreator.getTsid().toLong();
+        }
+    }
 }
