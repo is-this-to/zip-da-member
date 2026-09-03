@@ -16,8 +16,8 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI().info(
                 new Info()
-                        .title("Meerkatgram Auth API") // 문서 이름
-                        .description("Meerkatgram Auth REST API Document") // 문서 설명
+                        .title("ZIPDA member API") // 문서 이름
+                        .description("ZIPDA member REST API Document") // 문서 설명
                         .version("v1.0.0")
         )
         // 인증이 필요한 경우에 토큰을 가진 상태에서 요청을 보내볼수있도록 설정하는것
