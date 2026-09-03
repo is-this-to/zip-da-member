@@ -1,19 +1,11 @@
 package com.zipdamember.domain.admin.entity;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.github.f4b6a3.tsid.TsidCreator;
-import com.zipdamember.global.constant.AdminAuditActorType;
-import com.zipdamember.global.constant.AdminAuditResult;
-import com.zipdamember.global.constant.AdminAuditTargetService;
-import com.zipdamember.global.constant.AdminRoleCode;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import com.zipdamember.domain.admin.constant.AdminAuditActorType;
+import com.zipdamember.domain.admin.constant.AdminAuditResult;
+import com.zipdamember.domain.admin.constant.AdminAuditTargetService;
+import com.zipdamember.domain.admin.constant.AdminRoleCode;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,6 +24,7 @@ import java.time.LocalDateTime;
 public class AdminAuditLog {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(
             name = "audit_log_id",
             nullable = false,
@@ -97,11 +90,4 @@ public class AdminAuditLog {
     @CreatedDate
     @Column(name = "occurred_at", nullable = false, updatable = false)
     private LocalDateTime occurredAt;
-
-    @PrePersist
-    private void generateAuditLogId() {
-        if (auditLogId == null) {
-            auditLogId = TsidCreator.getTsid().toLong();
-        }
-    }
 }

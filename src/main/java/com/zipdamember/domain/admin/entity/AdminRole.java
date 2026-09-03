@@ -1,6 +1,6 @@
 package com.zipdamember.domain.admin.entity;
 
-import com.zipdamember.global.constant.AdminRoleCode;
+import com.zipdamember.domain.admin.constant.AdminRoleCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

@@ -1,34 +1,28 @@
 package com.zipdamember.domain.admin.entity;
 
 import com.github.f4b6a3.tsid.TsidCreator;
-import com.zipdamember.global.constant.AdminRoleCode;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import com.zipdamember.domain.admin.constant.AdminRoleCode;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.SQLDelete;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
-@Getter
 @Entity
+@EntityListeners(AuditingEntityListener.class)
 @Table(name = "admin_role_assignment")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
-@SQLDelete(sql = "UPDATE admin_role_assignment SET deleted_at = CURRENT_TIMESTAMP WHERE assignment_id = ?")
+@SQLDelete(sql = "UPDATE admin_role_assignment SET deleted_at = CURRENT_TIMESTAMP WHERE assignment_id = ? AND deleted_at IS NULL")
+@FilterDef(name = "softDelete")
 @Filter(name = "softDelete", condition = "deleted_at IS NULL")
+@Getter
 public class AdminRoleAssignment {
-
     @Id
     @Column(
             name = "assignment_id",
@@ -59,6 +53,18 @@ public class AdminRoleAssignment {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    public static AdminRoleAssignment create(
+            Long adminId,
+            AdminRoleCode roleCode,
+            Long assignedBy
+    ) {
+        AdminRoleAssignment assignment = new AdminRoleAssignment();
+        assignment.adminId = adminId;
+        assignment.roleCode = roleCode;
+        assignment.assignedBy = assignedBy;
+        return assignment;
+    }
 
     @PrePersist
     private void generateAssignmentId() {

@@ -3,7 +3,6 @@ package com.zipdamember.domain.admin.entity;
 import com.github.f4b6a3.tsid.TsidCreator;
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.SQLDelete;
@@ -20,7 +19,6 @@ import java.time.LocalDateTime;
 @FilterDef(name = "softDelete")
 @Filter(name = "softDelete", condition = "deleted_at IS NULL")
 @Getter
-@Setter
 public class Admin {
     @Id
     @Column(
@@ -50,7 +48,7 @@ public class Admin {
         name = "password_change_required",
         length = 255
     )
-    private Boolean password_change_required;
+    private Boolean passwordChangeRequired;
 
     @Column(
         name = "admin_name",

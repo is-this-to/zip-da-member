@@ -1,7 +1,7 @@
 package com.zipdamember.domain.admin.entity;
 
-import com.zipdamember.global.constant.AdminLoginResult;
-import com.zipdamember.global.constant.AdminLoginType;
+import com.zipdamember.domain.admin.constant.AdminLoginResult;
+import com.zipdamember.domain.admin.constant.AdminLoginType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
