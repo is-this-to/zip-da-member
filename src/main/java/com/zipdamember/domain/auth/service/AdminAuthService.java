@@ -2,12 +2,12 @@ package com.zipdamember.domain.auth.service;
 
 import com.zipdamember.domain.admin.constant.AdminRoleCode;
 import com.zipdamember.domain.admin.entity.Admin;
-import com.zipdamember.domain.admin.entity.AdminLoginSession;
-import com.zipdamember.domain.admin.repository.AdminLoginSessionRepository;
+import com.zipdamember.domain.auth.entity.AdminLoginSession;
+import com.zipdamember.domain.auth.repository.AdminLoginSessionRepository;
 import com.zipdamember.domain.admin.repository.AdminRoleAssignmentRepository;
 import com.zipdamember.domain.admin.repository.AdminRepository;
-import com.zipdamember.domain.admin.request.AdminLoginRequest;
-import com.zipdamember.domain.admin.response.AdminAuthResponse;
+import com.zipdamember.domain.auth.request.AdminLoginRequest;
+import com.zipdamember.domain.auth.response.AdminAuthResponse;
 import com.zipdamember.global.error.custom.business.InvalidTokenException;
 import com.zipdamember.global.error.custom.business.NotRegisteredException;
 import com.zipdamember.global.jwt.JwtConfig;
@@ -85,10 +85,10 @@ public class AdminAuthService {
 
         return new AdminAuthResponse(
             String.valueOf(admin.getAdminId()),
-            accessToken,
-            OffsetDateTime.now().plus(Duration.ofMillis(jwtConfig.adminAccessTokenExpiryMs())),
             roles,
-            Boolean.TRUE.equals(admin.getPasswordChangeRequired())
+            Boolean.TRUE.equals(admin.getPasswordChangeRequired()),
+            accessToken,
+            OffsetDateTime.now().plus(Duration.ofMillis(jwtConfig.adminAccessTokenExpiryMs()))
         );
     }
 
@@ -124,8 +124,6 @@ public class AdminAuthService {
         Admin admin = adminRepository.findById(adminId)
             .orElseThrow(() -> new InvalidTokenException("유효하지 않은 관리자 토큰입니다."));
 
-        // TODO: 삭제·정지·잠금 상태 관리자의 토큰 재발급 허용 여부를 검증한다.
-
         // 활성 관리자 역할 조회 및 토큰 반영
         List<AdminRoleCode> roles = adminRoleAssignmentRepository
             .findAllByAdminIdAndDeletedAtIsNull(admin.getAdminId()).stream()
@@ -151,10 +149,10 @@ public class AdminAuthService {
 
         return new AdminAuthResponse(
             String.valueOf(admin.getAdminId()),
-            accessToken,
-            OffsetDateTime.now().plus(Duration.ofMillis(jwtConfig.adminAccessTokenExpiryMs())),
             roles,
-            Boolean.TRUE.equals(admin.getPasswordChangeRequired())
+            Boolean.TRUE.equals(admin.getPasswordChangeRequired()),
+            accessToken,
+            OffsetDateTime.now().plus(Duration.ofMillis(jwtConfig.adminAccessTokenExpiryMs()))
         );
     }
 
