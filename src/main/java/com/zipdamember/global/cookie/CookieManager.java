@@ -47,7 +47,7 @@ public class CookieManager {
             response
             , jwtConfig.refreshTokenCookieName()
             , refreshToken
-            , jwtConfig.refreshTokenExpiryMs()
+            , jwtConfig.refreshTokenCookieMaxAgeSeconds()
             , jwtConfig.refreshTokenCookiePath()
         );
     }
