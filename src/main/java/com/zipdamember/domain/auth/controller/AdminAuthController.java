@@ -1,7 +1,7 @@
 package com.zipdamember.domain.auth.controller;
 
-import com.zipdamember.domain.admin.request.AdminLoginRequest;
-import com.zipdamember.domain.admin.response.AdminAuthResponse;
+import com.zipdamember.domain.auth.request.AdminLoginRequest;
+import com.zipdamember.domain.auth.response.AdminAuthResponse;
 import com.zipdamember.domain.auth.service.AdminAuthService;
 import com.zipdamember.global.openapi.CustomApiResponse;
 import com.zipdamember.global.response.GlobalResponseDTO;

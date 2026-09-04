@@ -67,14 +67,14 @@ public class JwtProvider {
 
     // MEMBER 토큰 관련
     public String generateAccessToken(MemberAccount member) {
-        return this.generateToken(member, jwtConfig.accessTokenExpiryMs());
+        return this.generateToken(member, jwtConfig.accessTokenExpiryMs(), "ACCESS");
     }
 
     public String generateRefreshToken(MemberAccount member) {
-        return this.generateToken(member, jwtConfig.refreshTokenCookieMaxAgeSeconds());
+        return this.generateToken(member, jwtConfig.refreshTokenExpiryMs(), "REFRESH");
     }
 
-    private String generateToken(MemberAccount member, int expiry) {
+    private String generateToken(MemberAccount member, int expiry, String tokenType) {
         Date now = new Date();
 
         return Jwts.builder()
@@ -85,6 +85,8 @@ public class JwtProvider {
             .issuer(jwtConfig.issuer()) // 토큰 발급자 셋팅
             .issuedAt(now) // 토급 발급시간 설정
             .expiration(new Date(now.getTime() + expiry)) // 토큰 만료 시간 설정
+            .claim("type", "MEMBER")
+            .claim("tokenType", tokenType)
             .claim("role", member.getMemberRole()) // Private Claim 설정
             .signWith(secretKey) // 시그니쳐 작성
             .compact();

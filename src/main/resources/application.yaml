@@ -139,7 +139,7 @@ jwt:
   secret: ${JWT_SECRET}
   header-key: Authorization
   scheme: Bearer
-  refresh-token-cookie-path: /api/member/auth/token-refreshes
+  refresh-token-cookie-path: /api/member/auth
   admin-refresh-token-cookie-path: /api/member/admin/auth/admin-token-refreshes
 
 # minio
