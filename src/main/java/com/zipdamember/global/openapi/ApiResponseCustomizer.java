@@ -63,6 +63,7 @@ public class ApiResponseCustomizer implements OperationCustomizer {
                 exampleMap.put("code", customErrorCode.getCode());
                 exampleMap.put("message", customErrorCode.name());
                 exampleMap.put("data", null);
+                exampleMap.put("traceId", "550e8400-e29b-41d4-a716-446655440000");
                 mediaType.addExamples(customErrorCode.name(), new Example().value(exampleMap));
             });
             content.addMediaType("application/json", mediaType);
