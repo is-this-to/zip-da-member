@@ -1,18 +1,20 @@
 package com.zipdamember.global.response;
 
+import com.zipdamember.global.context.TraceIdContext;
 import com.zipdamember.global.response.constant.CustomResponseCode;
 
 public record GlobalResponseDTO<T> (
     String code,
     String message,
-    T data
+    T data,
+    String traceId
 ) {
     public static <T> GlobalResponseDTO<T> from(CustomResponseCode customResponseCode, T data) {
-        return new GlobalResponseDTO<T>(customResponseCode.getCode(), customResponseCode.name(), data);
+        return new GlobalResponseDTO<T>(customResponseCode.getCode(), customResponseCode.name(), data, TraceIdContext.getOrCreate());
     }
 
     public static GlobalResponseDTO<Void> from(CustomResponseCode customResponseCode) {
-        return new GlobalResponseDTO<Void>(customResponseCode.getCode(), customResponseCode.name(), null);
+        return new GlobalResponseDTO<Void>(customResponseCode.getCode(), customResponseCode.name(), null, TraceIdContext.getOrCreate());
     }
 
     public static <T> GlobalResponseDTO<T> success(T data) {
