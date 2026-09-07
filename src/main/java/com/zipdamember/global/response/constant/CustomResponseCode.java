@@ -24,6 +24,9 @@ public enum CustomResponseCode {
     , FILE_MANAGED_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E40")
     // Not Found 관련
     , NOT_FOUND_ERROR(HttpStatus.NOT_FOUND, "E50")
+    // Email 관련
+    , EMAIL_SEND_ERROR(HttpStatus.SERVICE_UNAVAILABLE, "E60")
+    , EMAIL_RESEND_LIMIT_ERROR(HttpStatus.TOO_MANY_REQUESTS, "E61")
     // DB 관련
     , DB_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E80")
     , DB_DUPLICATED_KEY_ERROR(HttpStatus.CONFLICT, "E81")
