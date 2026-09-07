@@ -27,12 +27,12 @@ public class SecurityConfiguration {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity, HeaderAuthenticationFilter headerAuthenticationFilter) {
         return httpSecurity
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 비활성화
-                .httpBasic(AbstractHttpConfigurer::disable) // 화면 생성 비활성화
-                .formLogin(AbstractHttpConfigurer::disable) // 폼로그인 기능 비활성화
-                .csrf(AbstractHttpConfigurer::disable) // CSRF 토큰 인증 비활성화
-                .addFilterBefore(headerAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .authorizeHttpRequests(request -> request.anyRequest().permitAll()) // 인증 여부와 무관하게 모든 요청 통과
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 비활성화
+            .httpBasic(AbstractHttpConfigurer::disable) // 화면 생성 비활성화
+            .formLogin(AbstractHttpConfigurer::disable) // 폼로그인 기능 비활성화
+            .csrf(AbstractHttpConfigurer::disable) // CSRF 토큰 인증 비활성화
+            .addFilterBefore(headerAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .authorizeHttpRequests(request -> request.anyRequest().permitAll()) // 인증 여부와 무관하게 모든 요청 통과
 //               TODO: 추후 2Oauth 추가
 //                .oauth2Login(oauth2 ->
 //                        oauth2.authorizationEndpoint(endpoint -> endpoint.baseUri("/api/auth/oauth2/authorization")) // 기본 경로 설정
@@ -41,6 +41,6 @@ public class SecurityConfiguration {
 //                                .successHandler(oAuth2SuccessHandler) // 성공 핸들러 등록
 //                                .failureHandler(oAuthFailureHandler) // 실패 핸들러 등록
 //                )
-                .build();
+            .build();
     }
 }
