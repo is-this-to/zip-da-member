@@ -9,4 +9,6 @@ import java.util.Optional;
 
 public interface TermRepository extends JpaRepository<Term, Long> {
     Optional<List<TermResponse>> findAllBy();
+
+    List<Term> findAllByStatusTrue();
 }

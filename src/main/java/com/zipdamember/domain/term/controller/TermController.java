@@ -2,7 +2,7 @@ package com.zipdamember.domain.term.controller;
 
 import com.zipdamember.domain.term.response.TermResponse;
 import com.zipdamember.domain.term.service.TermService;
-import com.zipdamember.global.openapi.CustomApiResponse;
+import com.zipdamember.global.config.openapi.CustomApiResponse;
 import com.zipdamember.global.response.GlobalResponseDTO;
 import com.zipdamember.global.response.constant.CustomResponseCode;
 import io.swagger.v3.oas.annotations.Operation;
