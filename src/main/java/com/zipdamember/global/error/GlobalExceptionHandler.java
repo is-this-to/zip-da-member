@@ -5,6 +5,7 @@ import com.zipdamember.global.response.GlobalResponseDTO;
 import com.zipdamember.global.response.constant.CustomResponseCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import org.yaml.snakeyaml.constructor.DuplicateKeyException;
 
 import org.springframework.security.access.AccessDeniedException;
 import java.util.Map;
@@ -95,8 +95,8 @@ public class GlobalExceptionHandler {
         return this.generateErrorResponse(CustomResponseCode.NOT_FOUND_ERROR);
     }
 
-    @ExceptionHandler(DuplicateKeyException.class)
-    public ResponseEntity<GlobalResponseDTO<Void>> handle(DuplicateKeyException e) {
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<GlobalResponseDTO<Void>> handle(DataIntegrityViolationException e) {
         log.error("DB 에러", e);
         return this.generateErrorResponse(CustomResponseCode.DB_DUPLICATED_KEY_ERROR);
     }

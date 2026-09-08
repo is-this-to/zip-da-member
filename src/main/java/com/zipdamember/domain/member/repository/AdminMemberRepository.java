@@ -2,7 +2,7 @@ package com.zipdamember.domain.member.repository;
 
 import com.zipdamember.domain.member.constant.MemberStatus;
 import com.zipdamember.domain.member.entity.MemberAccount;
-import com.zipdamember.global.jpa.JPAWithDeleted;
+import com.zipdamember.global.config.jpa.JPAWithDeleted;
 import com.zipdamember.global.security.constant.MemberRolePolicy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

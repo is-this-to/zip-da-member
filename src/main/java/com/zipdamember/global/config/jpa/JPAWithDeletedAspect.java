@@ -1,4 +1,4 @@
-package com.zipdamember.global.jpa;
+package com.zipdamember.global.config.jpa;
 
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;

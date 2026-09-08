@@ -1,4 +1,4 @@
-package com.zipdamember.global.openapi;
+package com.zipdamember.global.config.openapi;
 
 
 import com.zipdamember.global.response.constant.CustomResponseCode;
