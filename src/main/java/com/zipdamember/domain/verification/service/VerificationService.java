@@ -36,8 +36,8 @@ public class VerificationService {
     private static final int VERIFICATION_EXPIRY_MINUTES = 5;
     // 이메일 인증번호 유효 시간(초)
     private static final int VERIFICATION_EXPIRY_SECONDS = 300;
-    // 같은 이메일로 인증번호를 다시 요청할려면 60초 기다려야함
-    private static final int RESEND_LIMIT_SECONDS = 60;
+    // 같은 이메일로 인증번호를 다시 요청할려면 10초 기다려야함
+    private static final int RESEND_LIMIT_SECONDS = 10;
     // 이메일 인증 최대 실패 횟수. 정책 확정 시 이 값만 변경한다.
     private static final int MAX_VERIFICATION_ATTEMPTS = 5;
 
@@ -50,13 +50,15 @@ public class VerificationService {
 
     /**
      * 이미 가입한 nickname or email인지 검사
-     * @param validateMemberRequest
+     * @param validateMemberRequest 중복 검사할 type, value
      * @return RegistrationDuplicateResponse
      */
     public RegistrationDuplicateResponse checkDuplicate(ValidateMemberRequest validateMemberRequest) {
+        // request value의 유효성 검사
         memberFormatValidator.validate(validateMemberRequest);
+
         if (validateMemberRequest.typePolicy() == MemberValidationTypePolicy.EMAIL) {
-            boolean isExist = verificationMemberRepository.existsByEmail(validateMemberRequest.value());
+            boolean isExist = verificationMemberRepository.existsByEmail(validateMemberRequest.value().trim().toLowerCase(Locale.ROOT));
             return RegistrationDuplicateResponse.from(!isExist, validateMemberRequest.typePolicy());
         } else if (validateMemberRequest.typePolicy() == MemberValidationTypePolicy.NICKNAME) {
             boolean isExist = verificationMemberRepository.existsByNickname(validateMemberRequest.value());
@@ -64,17 +66,16 @@ public class VerificationService {
         } else {
             throw new BusinessException(CustomResponseCode.INVALID_PARAMETER_ERROR);
         }
+
     }
 
     /**
      * Request를 받아 전체 발송 작업 수행 후, 성공 시 Response를 반환
-     * @param request
+     * @param request 인증 이메일
      * @return EmailVerificationResponse
      */
     public EmailVerificationResponse sendVerificationCode(EmailVerificationRequest request) {
-        String email = request.email()
-                .trim()
-                .toLowerCase(Locale.ROOT);
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
 
         if (verificationMemberRepository.existsByEmail(email)) {
             throw new AlreadyRegisteredException(
@@ -84,32 +85,26 @@ public class VerificationService {
 
         LocalDateTime now = LocalDateTime.now();
         String emailHash = emailVerificationHasher.hashEmail(email);
-        LocalDateTime resendBoundary = now.minusSeconds(RESEND_LIMIT_SECONDS); // 최근 60초 안에 보낸 인증 메일 있음?
+        LocalDateTime resendBoundary = now.minusSeconds(RESEND_LIMIT_SECONDS); // 최근 10초 안에 보낸 인증 메일 있음?
 
-        boolean recentlySent = verificationEmailRepository
-                // 인증 이메일이 일치하고 인증 목적이 일치하며 만료 시각이 기준 시각보다 뒤인 데이터가 존재?
-                .existsByVerificationEmailAndPurposeAndCreatedAtAfter(
+        // 인증 이메일이 일치하고 인증 목적이 일치하며 만료 시각이 기준 시각보다 뒤인 데이터가 존재?
+        boolean recentlySent = verificationEmailRepository.existsByVerificationEmailAndPurposeAndCreatedAtAfter(
                         emailHash,
                         EmailVerificationPurposePolicy.SIGNUP,
                         resendBoundary
                 );
 
         if (recentlySent) {
-            throw new BusinessException(
-                    CustomResponseCode.EMAIL_RESEND_LIMIT_ERROR,
-                    "인증번호는 60초 후 다시 요청할 수 있습니다."
-            );
+            throw new BusinessException(CustomResponseCode.EMAIL_RESEND_LIMIT_ERROR, "인증번호는 10초 후 다시 요청할 수 있습니다.");
         }
 
         String verificationCode = verificationCodeGenerator.generate();
         String verificationCodeHash = emailVerificationHasher.hashVerificationCode(verificationCode);
 
-        EmailVerification emailVerification = EmailVerification.create(
-                emailHash,
-                EmailVerificationPurposePolicy.SIGNUP,
-                verificationCodeHash,
-                now.plusMinutes(VERIFICATION_EXPIRY_MINUTES)
-        );
+        EmailVerification emailVerification = new EmailVerification();
+        emailVerification.setVerificationEmail(emailHash);
+        emailVerification.setVerificationCode(verificationCodeHash);
+        emailVerification.setExpiresAt(now.plusMinutes(VERIFICATION_EXPIRY_MINUTES));
 
         EmailVerification savedEmailVerification = verificationEmailRepository.save(emailVerification);
 
@@ -124,12 +119,13 @@ public class VerificationService {
     }
 
     /**
-     * 사용자가 입력한 이메일 인증번호를 확인한다.
-     * 인증번호 불일치 시 attemptCount 증가를 보존하기 위해
-     * VerificationAttemptException에는 트랜잭션을 롤백하지 않는다.
+     * 사용자가 입력한 인증번호를 확인
+     * @param verificationId 이메일 인증 테이블 식별자
+     * @param request 사용자 입력 인증 코드
+     * @return 인증 완료 여부
      */
     @Transactional(noRollbackFor = VerificationAttemptException.class)
-    public VerifyEmailVerificationResponse verifyVerificationCode(Long verificationId, VerifyEmailVerificationRequest request) {
+    public VerifyEmailVerificationResponse verifyVerificationCode(Long verificationId, VerifyEmailVerificationRequest request, EmailVerificationPurposePolicy policy) {
         if (verificationId == null || verificationId <= 0) {
             throw new BusinessException(
                     CustomResponseCode.INVALID_PARAMETER_ERROR,
@@ -141,33 +137,31 @@ public class VerificationService {
         EmailVerification emailVerification = verificationEmailRepository.findByIdForUpdate(verificationId)
                 .orElseThrow(() -> new BusinessException(CustomResponseCode.EMAIL_VERIFICATION_NOT_FOUND, "이메일 인증 정보를 찾을 수 없습니다."));
 
-        String normalizedEmail = request.email()
-                .trim()
-                .toLowerCase(Locale.ROOT);
-        String emailHash = emailVerificationHasher.hashEmail(normalizedEmail);
+        String emailHash = emailVerificationHasher.hashEmail(request.email().trim().toLowerCase(Locale.ROOT));
         LocalDateTime now = LocalDateTime.now();
 
-        if (emailVerification.getPurpose() != EmailVerificationPurposePolicy.SIGNUP) {
+        // DB에 저장된 purpose가 다름
+        if (emailVerification.getPurpose() != policy) {
             throw new BusinessException(
                     CustomResponseCode.INVALID_PARAMETER_ERROR,
-                    "회원가입용 이메일 인증 정보가 아닙니다."
+                    "이메일 인증 정보가 다릅니다."
             );
         }
-
+        // DB에 저장된 email과 request email이 다름
         if (!emailVerification.getVerificationEmail().equals(emailHash)) {
             throw new BusinessException(
                     CustomResponseCode.EMAIL_VERIFICATION_EMAIL_MISMATCH,
                     "인증번호를 요청한 이메일과 일치하지 않습니다."
             );
         }
-
+        // DB에 저장된게 만료된 인증번호일 경우
         if (emailVerification.isExpired(now)) {
             throw new BusinessException(
                     CustomResponseCode.EMAIL_VERIFICATION_EXPIRED,
                     "이메일 인증번호가 만료되었습니다."
             );
         }
-
+        // 이미 사용한 이메일 인증일 경우
         if (emailVerification.isVerified()) {
             throw new BusinessException(
                     CustomResponseCode.EMAIL_VERIFICATION_ALREADY_COMPLETED,
@@ -175,19 +169,16 @@ public class VerificationService {
             );
         }
 
-        if (emailVerification.hasReachedAttemptLimit(
-                MAX_VERIFICATION_ATTEMPTS
-        )) {
+        // 이메일 입력 최대 가능 횟수를 초과
+        if (emailVerification.hasReachedAttemptLimit(MAX_VERIFICATION_ATTEMPTS)) {
             throw new BusinessException(
                     CustomResponseCode.VERIFICATION_ATTEMPTS_EXCEEDED,
                     "이메일 인증번호 입력 가능 횟수를 초과했습니다."
             );
         }
 
-        boolean matches = emailVerificationHasher.matches(
-                request.verificationCode(),
-                emailVerification.getVerificationCode()
-        );
+        // 사용자가 입력한 인증 코드와 DB에 저장된 인증 코드를 비교
+        boolean matches = emailVerificationHasher.matches(request.verificationCode(), emailVerification.getVerificationCode());
 
         if (!matches) {
             emailVerification.increaseAttemptCount();
@@ -196,10 +187,8 @@ public class VerificationService {
                     verificationId,
                     emailVerification.getAttemptCount()
             );
-
-            if (emailVerification.hasReachedAttemptLimit(
-                    MAX_VERIFICATION_ATTEMPTS
-            )) {
+            // 잘못된 입력이 5회가 되었을때
+            if (emailVerification.hasReachedAttemptLimit(MAX_VERIFICATION_ATTEMPTS)) {
                 throw new VerificationAttemptException(
                         CustomResponseCode.VERIFICATION_ATTEMPTS_EXCEEDED,
                         "이메일 인증번호 입력 가능 횟수를 초과했습니다."
@@ -211,7 +200,7 @@ public class VerificationService {
                     "이메일 인증번호가 일치하지 않습니다."
             );
         }
-
+        // verifiedAt 변경 저장
         emailVerification.verify(now);
 
         return VerifyEmailVerificationResponse.from(emailVerification);
