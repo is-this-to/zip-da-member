@@ -6,6 +6,10 @@ import com.zipdamember.domain.auth.request.LoginRequest;
 import com.zipdamember.domain.member.constant.MemberStatus;
 import com.zipdamember.domain.member.entity.MemberAccount;
 import com.zipdamember.domain.member.repository.MemberAccountRepository;
+import com.zipdamember.domain.term.repository.TermAgreementRepository;
+import com.zipdamember.domain.term.repository.TermRepository;
+import com.zipdamember.domain.verification.repository.VerificationEmailRepository;
+import com.zipdamember.domain.verification.util.EmailVerificationHasher;
 import com.zipdamember.global.cookie.CookieManager;
 import com.zipdamember.global.error.custom.business.NotRegisteredException;
 import com.zipdamember.global.jwt.JwtConfig;
@@ -45,7 +49,11 @@ class AuthServiceTest {
             Base64.getEncoder().encodeToString(new byte[32]), "Authorization", "Bearer",
             "/api/member/auth", "/api/member/auth/admin-token-refreshes");
         jwt = new JwtProvider(config);
-        service = new AuthService(members, encoder, sessions, jwt, new CookieManager(config), config);
+        service = new AuthService(
+            members, encoder, sessions, jwt, new CookieManager(config), config,
+            mock(TermRepository.class), mock(EmailVerificationHasher.class),
+            mock(VerificationEmailRepository.class), mock(TermAgreementRepository.class)
+        );
         member = new MemberAccount();
         member.setMemberId(1L);
         member.setPassword("encoded-password");

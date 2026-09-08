@@ -5,6 +5,10 @@ import com.zipdamember.domain.auth.repository.LoginSessionRepository;
 import com.zipdamember.domain.member.constant.MemberStatus;
 import com.zipdamember.domain.member.entity.MemberAccount;
 import com.zipdamember.domain.member.repository.MemberAccountRepository;
+import com.zipdamember.domain.term.repository.TermAgreementRepository;
+import com.zipdamember.domain.term.repository.TermRepository;
+import com.zipdamember.domain.verification.repository.VerificationEmailRepository;
+import com.zipdamember.domain.verification.util.EmailVerificationHasher;
 import com.zipdamember.global.cookie.CookieManager;
 import com.zipdamember.global.error.custom.business.InvalidTokenException;
 import com.zipdamember.global.jwt.JwtConfig;
@@ -50,7 +54,11 @@ class AuthServiceReissueTest {
             Base64.getEncoder().encodeToString(key), "Authorization", "Bearer",
             "/api/member/auth", "/api/member/auth/admin-token-refreshes");
         jwt = spy(new JwtProvider(config));
-        service = new AuthService(members, mock(PasswordEncoder.class), sessions, jwt, new CookieManager(config), config);
+        service = new AuthService(
+            members, mock(PasswordEncoder.class), sessions, jwt, new CookieManager(config), config,
+            mock(TermRepository.class), mock(EmailVerificationHasher.class),
+            mock(VerificationEmailRepository.class), mock(TermAgreementRepository.class)
+        );
         member = new MemberAccount();
         member.setMemberId(1L);
         oldToken = token("test", "MEMBER", "REFRESH", "1", 60000);

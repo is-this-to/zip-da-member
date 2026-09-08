@@ -2,16 +2,30 @@ package com.zipdamember.domain.auth.service;
 
 import com.zipdamember.domain.auth.entity.LoginSession;
 import com.zipdamember.domain.auth.repository.LoginSessionRepository;
+import com.zipdamember.domain.auth.request.CreateMemberRequest;
 import com.zipdamember.domain.auth.request.LoginRequest;
+import com.zipdamember.domain.auth.request.TermAgreementRequest;
+import com.zipdamember.domain.auth.response.CreateMemberResponse;
 import com.zipdamember.domain.auth.response.LoginResponse;
 import com.zipdamember.domain.member.constant.MemberStatus;
 import com.zipdamember.domain.member.entity.MemberAccount;
 import com.zipdamember.domain.member.repository.MemberAccountRepository;
+import com.zipdamember.domain.term.entity.Term;
+import com.zipdamember.domain.term.entity.TermAgreement;
+import com.zipdamember.domain.term.repository.TermAgreementRepository;
+import com.zipdamember.domain.term.repository.TermRepository;
+import com.zipdamember.domain.verification.constant.EmailVerificationPurposePolicy;
+import com.zipdamember.domain.verification.entity.EmailVerification;
+import com.zipdamember.domain.verification.repository.VerificationEmailRepository;
+import com.zipdamember.domain.verification.util.EmailVerificationHasher;
 import com.zipdamember.global.cookie.CookieManager;
+import com.zipdamember.global.error.custom.BusinessException;
+import com.zipdamember.global.error.custom.business.AlreadyRegisteredException;
 import com.zipdamember.global.error.custom.business.InvalidTokenException;
 import com.zipdamember.global.error.custom.business.NotRegisteredException;
 import com.zipdamember.global.jwt.JwtConfig;
 import com.zipdamember.global.jwt.JwtProvider;
+import com.zipdamember.global.response.constant.CustomResponseCode;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,7 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.Locale;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +48,10 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final CookieManager cookieManager;
     private final JwtConfig jwtConfig;
+    private final TermRepository termRepository;
+    private final EmailVerificationHasher emailVerificationHasher;
+    private final VerificationEmailRepository verificationEmailRepository;
+    private final TermAgreementRepository termAgreementRepository;
 
     @Transactional(rollbackFor = Exception.class)
     public LoginResponse login(HttpServletRequest request, HttpServletResponse response, LoginRequest loginRequest) {
@@ -157,5 +175,166 @@ public class AuthService {
         loginSessionRepository.flush();
         // 브라우저의 Refresh Token 쿠키 제거
         cookieManager.removeRefreshTokenToCookie(response);
+    }
+
+    @Transactional
+    public CreateMemberResponse signup(CreateMemberRequest request) {
+        String normalizedEmail = request.email()
+                .trim()
+                .toLowerCase(Locale.ROOT);
+        String nickname = request.nickname().trim();
+        LocalDateTime now = LocalDateTime.now();
+
+        validatePasswordConfirmation(request);
+
+        EmailVerification emailVerification = validateEmailVerification(
+                request.verificationId(),
+                normalizedEmail,
+                now
+        );
+
+        validateMemberDuplicates(normalizedEmail, nickname);
+        Map<Long, Term> activeTermsById = validateTermAgreements(request.termsAgreements());
+        String encodedPassword = passwordEncoder.encode(request.password());
+
+
+        MemberAccount memberAccount = new MemberAccount();
+        memberAccount.setEmail(normalizedEmail);
+        memberAccount.setPassword(encodedPassword);
+        memberAccount.setName(request.name().trim());
+        memberAccount.setNickname(nickname);
+        memberAccount.setPhone(request.phone());
+        memberAccount.setProfileFileId(request.profileFileId());
+        memberAccount.setEmailVerificationAt(emailVerification.getVerifiedAt());
+
+        MemberAccount savedMemberAccount = memberAccountRepository.save(memberAccount);
+
+        // 화면에 조회된 모든 활성 약관의 선택값(true/false)을 각각 한 행으로 저장한다.
+        List<TermAgreement> termAgreementHistory = request.termsAgreements()
+                .stream()
+                .map(agreement -> TermAgreement.create(
+                        savedMemberAccount.getMemberId(),
+                        activeTermsById.get(agreement.termsId()).getTermId(),
+                        agreement.agreed()
+                ))
+                .toList();
+
+        termAgreementRepository.saveAll(termAgreementHistory);
+
+        // 가입에 사용한 인증 정보는 재사용할 수 없도록 같은 트랜잭션에서 물리 삭제한다.
+        verificationEmailRepository.delete(emailVerification);
+
+        return CreateMemberResponse.from(savedMemberAccount);
+    }
+
+    private void validatePasswordConfirmation(CreateMemberRequest request) {
+        if (!request.password().equals(request.passwordCheck())) {
+            throw new BusinessException(
+                    CustomResponseCode.INVALID_PARAMETER_ERROR,
+                    "비밀번호와 비밀번호 확인이 일치하지 않습니다."
+            );
+        }
+    }
+
+    private EmailVerification validateEmailVerification(
+            Long verificationId,
+            String normalizedEmail,
+            LocalDateTime now
+    ) {
+        EmailVerification emailVerification = verificationEmailRepository.findByIdForUpdate(verificationId)
+                .orElseThrow(() -> new BusinessException(
+                        CustomResponseCode.EMAIL_VERIFICATION_NOT_FOUND,
+                        "이메일 인증 정보를 찾을 수 없습니다."
+                ));
+
+        if (emailVerification.getPurpose() != EmailVerificationPurposePolicy.SIGNUP) {
+            throw new BusinessException(
+                    CustomResponseCode.INVALID_PARAMETER_ERROR,
+                    "회원가입용 이메일 인증 정보가 아닙니다."
+            );
+        }
+
+        String emailHash = emailVerificationHasher.hashEmail(normalizedEmail);
+        if (!emailHash.equals(emailVerification.getVerificationEmail())) {
+            throw new BusinessException(
+                    CustomResponseCode.EMAIL_VERIFICATION_EMAIL_MISMATCH,
+                    "인증을 완료한 이메일과 회원가입 이메일이 일치하지 않습니다."
+            );
+        }
+
+        if (emailVerification.isExpired(now)) {
+            throw new BusinessException(
+                    CustomResponseCode.EMAIL_VERIFICATION_EXPIRED,
+                    "이메일 인증 정보가 만료되었습니다."
+            );
+        }
+
+        if (!emailVerification.isVerified()) {
+            throw new BusinessException(
+                    CustomResponseCode.EMAIL_VERIFICATION_REQUIRED,
+                    "이메일 인증을 먼저 완료해야 합니다."
+            );
+        }
+
+        return emailVerification;
+    }
+
+    private void validateMemberDuplicates(String normalizedEmail, String nickname) {
+        if (memberAccountRepository.existsByEmail(normalizedEmail)) {
+            throw new AlreadyRegisteredException("이미 가입된 이메일입니다.");
+        }
+
+        if (memberAccountRepository.existsByNickname(nickname)) {
+            throw new BusinessException(
+                    CustomResponseCode.DUPLICATED_RESOURCE_ERROR,
+                    "이미 사용 중인 닉네임입니다."
+            );
+        }
+    }
+
+    private Map<Long, Term> validateTermAgreements(List<TermAgreementRequest> requestedAgreements) {
+        Set<Long> requestedTermIds = new HashSet<>();
+        for (TermAgreementRequest agreement : requestedAgreements) {
+            if (!requestedTermIds.add(agreement.termsId())) {
+                throw new BusinessException(
+                        CustomResponseCode.INVALID_PARAMETER_ERROR,
+                        "동일한 약관에 대한 동의 내역이 중복되었습니다."
+                );
+            }
+        }
+
+        List<Term> activeTerms = termRepository.findAllByStatusTrue();
+        Map<Long, Term> activeTermsById = new HashMap<>();
+        for (Term term : activeTerms) {
+            activeTermsById.put(term.getTermId(), term);
+        }
+
+        if (!requestedTermIds.equals(activeTermsById.keySet())) {
+            throw new BusinessException(
+                    CustomResponseCode.INVALID_PARAMETER_ERROR,
+                    "조회된 활성 약관 전체의 동의 여부를 전달해야 합니다."
+            );
+        }
+
+        for (TermAgreementRequest agreement : requestedAgreements) {
+            Term term = activeTermsById.get(agreement.termsId());
+
+            if (!term.getTermVersion().equals(agreement.version())) {
+                throw new BusinessException(
+                        CustomResponseCode.INVALID_PARAMETER_ERROR,
+                        "현재 약관 버전과 요청한 약관 버전이 일치하지 않습니다."
+                );
+            }
+
+            if (Boolean.TRUE.equals(term.getIsRequired())
+                    && !Boolean.TRUE.equals(agreement.agreed())) {
+                throw new BusinessException(
+                        CustomResponseCode.INVALID_PARAMETER_ERROR,
+                        "필수 약관에 모두 동의해야 합니다."
+                );
+            }
+        }
+
+        return activeTermsById;
     }
 }

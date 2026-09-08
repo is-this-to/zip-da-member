@@ -1,6 +1,8 @@
 package com.zipdamember.domain.auth.controller;
 
+import com.zipdamember.domain.auth.request.CreateMemberRequest;
 import com.zipdamember.domain.auth.request.LoginRequest;
+import com.zipdamember.domain.auth.response.CreateMemberResponse;
 import com.zipdamember.domain.auth.response.LoginResponse;
 import com.zipdamember.domain.auth.service.AuthService;
 import com.zipdamember.global.response.GlobalResponseDTO;
@@ -16,16 +18,31 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
+
 @Tag(name = "인증/인가 약관 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/member/auth")
 public class AuthController {
     private final AuthService authService;
 
+    @Operation(summary = "회원 회원가입", description = "USER 회원가입")
+    @PreAuthorize("!isAuthenticated()")
+    @PostMapping("/api/members")
+    public ResponseEntity<GlobalResponseDTO<CreateMemberResponse>> signup(
+            @Valid @RequestBody CreateMemberRequest request
+    ) {
+        CreateMemberResponse response = authService.signup(request);
+        URI location = URI.create("/api/members/" + response.memberId());
+
+        return ResponseEntity
+                .created(location)
+                .body(GlobalResponseDTO.success(response));
+    }
+
     @Operation(summary = "회원 이메일 로그인", description = "USER·AGENT 공통 로그인")
     @SecurityRequirements
-    @PostMapping("/sessions")
+    @PostMapping("/api/member/auth/sessions")
     public ResponseEntity<GlobalResponseDTO<LoginResponse>> login(
         @Valid @RequestBody LoginRequest loginRequest,
         HttpServletRequest request,
@@ -36,7 +53,7 @@ public class AuthController {
 
     @Operation(summary = "회원 토큰 재발급", description = "회원 Refresh 쿠키로 토큰 회전")
     @SecurityRequirements
-    @PostMapping("/token-refreshes")
+    @PostMapping("/api/member/auth/token-refreshes")
     public ResponseEntity<GlobalResponseDTO<LoginResponse>> reissue(
         HttpServletRequest request, HttpServletResponse response
     ) {
@@ -45,7 +62,7 @@ public class AuthController {
 
     @Operation(summary = "회원 현재 세션 로그아웃")
     @PreAuthorize("hasAnyRole('USER', 'AGENT')")
-    @DeleteMapping("/sessions/current")
+    @DeleteMapping("/api/member/auth/sessions/current")
     public ResponseEntity<GlobalResponseDTO<Void>> logout(
         HttpServletRequest request, HttpServletResponse response, Authentication authentication
     ) {
