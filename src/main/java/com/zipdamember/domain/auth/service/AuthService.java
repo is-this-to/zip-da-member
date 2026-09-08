@@ -7,6 +7,7 @@ import com.zipdamember.domain.auth.request.LoginRequest;
 import com.zipdamember.domain.auth.request.TermAgreementRequest;
 import com.zipdamember.domain.auth.response.CreateMemberResponse;
 import com.zipdamember.domain.auth.response.LoginResponse;
+import com.zipdamember.domain.file.service.FileService;
 import com.zipdamember.domain.member.constant.MemberStatus;
 import com.zipdamember.domain.member.entity.MemberAccount;
 import com.zipdamember.domain.member.repository.MemberAccountRepository;
@@ -52,6 +53,7 @@ public class AuthService {
     private final EmailVerificationHasher emailVerificationHasher;
     private final VerificationEmailRepository verificationEmailRepository;
     private final TermAgreementRepository termAgreementRepository;
+    private final FileService fileService;
 
     @Transactional(rollbackFor = Exception.class)
     public LoginResponse login(HttpServletRequest request, HttpServletResponse response, LoginRequest loginRequest) {
@@ -177,26 +179,29 @@ public class AuthService {
         cookieManager.removeRefreshTokenToCookie(response);
     }
 
+    /**
+     * 사용자 회원가입
+     * @param request 저장할 사용자 정보
+     * @return 저장한 사용자 정보
+     */
     @Transactional
     public CreateMemberResponse signup(CreateMemberRequest request) {
-        String normalizedEmail = request.email()
-                .trim()
-                .toLowerCase(Locale.ROOT);
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
         String nickname = request.nickname().trim();
         LocalDateTime now = LocalDateTime.now();
 
+        // 비밀번호랑 비밀번호 확인 비교
         validatePasswordConfirmation(request);
 
-        EmailVerification emailVerification = validateEmailVerification(
-                request.verificationId(),
-                normalizedEmail,
-                now
-        );
+        // 이메일 인증된건지 확인
+        EmailVerification emailVerification = validateEmailVerification(request.verificationId(), normalizedEmail, now, EmailVerificationPurposePolicy.SIGNUP);
 
+        // 중복된 정보인지 확인
         validateMemberDuplicates(normalizedEmail, nickname);
+
+        // 활성 상태인 약관 Map 매핑 반환
         Map<Long, Term> activeTermsById = validateTermAgreements(request.termsAgreements());
         String encodedPassword = passwordEncoder.encode(request.password());
-
 
         MemberAccount memberAccount = new MemberAccount();
         memberAccount.setEmail(normalizedEmail);
@@ -208,6 +213,14 @@ public class AuthService {
         memberAccount.setEmailVerificationAt(emailVerification.getVerifiedAt());
 
         MemberAccount savedMemberAccount = memberAccountRepository.save(memberAccount);
+
+        if (request.profileFileId() != null) {
+            fileService.assignProfileToMember(
+                    request.profileFileId(),
+                    savedMemberAccount.getMemberId(),
+                    now
+            );
+        }
 
         // 화면에 조회된 모든 활성 약관의 선택값(true/false)을 각각 한 행으로 저장한다.
         List<TermAgreement> termAgreementHistory = request.termsAgreements()
@@ -227,6 +240,10 @@ public class AuthService {
         return CreateMemberResponse.from(savedMemberAccount);
     }
 
+    /**
+     * 비밀번호와 비밀번호확인 일치여부 확인
+     * @param request 회원가입 회원 정보
+     */
     private void validatePasswordConfirmation(CreateMemberRequest request) {
         if (!request.password().equals(request.passwordCheck())) {
             throw new BusinessException(
@@ -236,24 +253,30 @@ public class AuthService {
         }
     }
 
-    private EmailVerification validateEmailVerification(
-            Long verificationId,
-            String normalizedEmail,
-            LocalDateTime now
-    ) {
+    /**
+     * 이메일 인증 된 사용자인지 확인하는 메서드
+     * @param verificationId 이메일 인증 식별자
+     * @param normalizedEmail 이메일 평문
+     * @param now 현재 시간
+     * @return 이메일 인증 데이터
+     */
+    private EmailVerification validateEmailVerification(Long verificationId, String normalizedEmail, LocalDateTime now, EmailVerificationPurposePolicy policy) {
+        // 해당 식별자를 가진 이메일 인증 정보가 없음
         EmailVerification emailVerification = verificationEmailRepository.findByIdForUpdate(verificationId)
                 .orElseThrow(() -> new BusinessException(
                         CustomResponseCode.EMAIL_VERIFICATION_NOT_FOUND,
                         "이메일 인증 정보를 찾을 수 없습니다."
                 ));
 
-        if (emailVerification.getPurpose() != EmailVerificationPurposePolicy.SIGNUP) {
+        // 이메일 인증
+        if (emailVerification.getPurpose() != policy) {
             throw new BusinessException(
                     CustomResponseCode.INVALID_PARAMETER_ERROR,
                     "회원가입용 이메일 인증 정보가 아닙니다."
             );
         }
 
+        // 인증 완료한 이메일과 회원가입 이메일 일치하지 않음
         String emailHash = emailVerificationHasher.hashEmail(normalizedEmail);
         if (!emailHash.equals(emailVerification.getVerificationEmail())) {
             throw new BusinessException(
@@ -262,13 +285,7 @@ public class AuthService {
             );
         }
 
-        if (emailVerification.isExpired(now)) {
-            throw new BusinessException(
-                    CustomResponseCode.EMAIL_VERIFICATION_EXPIRED,
-                    "이메일 인증 정보가 만료되었습니다."
-            );
-        }
-
+        // 인증이 완료됐는가?
         if (!emailVerification.isVerified()) {
             throw new BusinessException(
                     CustomResponseCode.EMAIL_VERIFICATION_REQUIRED,
@@ -279,6 +296,11 @@ public class AuthService {
         return emailVerification;
     }
 
+    /**
+     * DB 중복 저장 방지용 이메일, 닉네임 확인
+     * @param normalizedEmail 이메일 평문
+     * @param nickname 닉네임
+     */
     private void validateMemberDuplicates(String normalizedEmail, String nickname) {
         if (memberAccountRepository.existsByEmail(normalizedEmail)) {
             throw new AlreadyRegisteredException("이미 가입된 이메일입니다.");
@@ -292,23 +314,29 @@ public class AuthService {
         }
     }
 
+    /**
+     * 사용자가 보낸 termsId가 현재 활성 약관인지 확인, 약관 버전 확인, 필수 약관인지 확인
+     * @param requestedAgreements 사용자가 동의, 비동의한 이용 약관 모음
+     * @return 활성화된 모든 약관 동의, 비동의 Map
+     */
     private Map<Long, Term> validateTermAgreements(List<TermAgreementRequest> requestedAgreements) {
         Set<Long> requestedTermIds = new HashSet<>();
+
+        // 사용자 동의 약관 Set에 넣기
         for (TermAgreementRequest agreement : requestedAgreements) {
             if (!requestedTermIds.add(agreement.termsId())) {
-                throw new BusinessException(
-                        CustomResponseCode.INVALID_PARAMETER_ERROR,
-                        "동일한 약관에 대한 동의 내역이 중복되었습니다."
-                );
+                throw new BusinessException(CustomResponseCode.INVALID_PARAMETER_ERROR, "동일한 약관에 대한 동의 내역이 중복되었습니다.");
             }
         }
 
+        // 활성 약관 Map에 넣기
         List<Term> activeTerms = termRepository.findAllByStatusTrue();
         Map<Long, Term> activeTermsById = new HashMap<>();
         for (Term term : activeTerms) {
             activeTermsById.put(term.getTermId(), term);
         }
 
+        // 활성화된 모든 약관에 대해서 선택을 했는가?
         if (!requestedTermIds.equals(activeTermsById.keySet())) {
             throw new BusinessException(
                     CustomResponseCode.INVALID_PARAMETER_ERROR,
@@ -317,21 +345,17 @@ public class AuthService {
         }
 
         for (TermAgreementRequest agreement : requestedAgreements) {
+            // 활성화된 약관에서 사용자 선택한 약관을 key로 선택
             Term term = activeTermsById.get(agreement.termsId());
 
+            // 버전 비교
             if (!term.getTermVersion().equals(agreement.version())) {
-                throw new BusinessException(
-                        CustomResponseCode.INVALID_PARAMETER_ERROR,
-                        "현재 약관 버전과 요청한 약관 버전이 일치하지 않습니다."
-                );
+                throw new BusinessException(CustomResponseCode.INVALID_PARAMETER_ERROR, "현재 약관 버전과 요청한 약관 버전이 일치하지 않습니다.");
             }
 
-            if (Boolean.TRUE.equals(term.getIsRequired())
-                    && !Boolean.TRUE.equals(agreement.agreed())) {
-                throw new BusinessException(
-                        CustomResponseCode.INVALID_PARAMETER_ERROR,
-                        "필수 약관에 모두 동의해야 합니다."
-                );
+            // 필수 약관인지 사용자가 동의하지 않은 경우에만 예외 발생
+            if (Boolean.TRUE.equals(term.getIsRequired()) && !Boolean.TRUE.equals(agreement.agreed())) {
+                throw new BusinessException(CustomResponseCode.INVALID_PARAMETER_ERROR, "필수 약관에 모두 동의해야 합니다.");
             }
         }
 
