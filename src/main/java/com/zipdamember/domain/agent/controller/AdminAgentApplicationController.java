@@ -1,9 +1,12 @@
 package com.zipdamember.domain.agent.controller;
 
 import com.zipdamember.domain.agent.request.AdminAgentApplicationSearchRequest;
+import com.zipdamember.domain.agent.response.AdminAgentApplicationDetailResponse;
 import com.zipdamember.domain.agent.response.AdminAgentApplicationListResponse;
 import com.zipdamember.domain.agent.service.AdminAgentApplicationService;
+import com.zipdamember.global.openapi.CustomApiResponse;
 import com.zipdamember.global.response.GlobalResponseDTO;
+import com.zipdamember.global.response.constant.CustomResponseCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -12,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,6 +35,24 @@ public class AdminAgentApplicationController {
     ) {
         return ResponseEntity.ok(GlobalResponseDTO.success(
                 adminAgentApplicationService.search(request)
+        ));
+    }
+
+    @Operation(summary = "중개사 신청·서류 상세 조회")
+    @CustomApiResponse(value = {
+            CustomResponseCode.NOT_FOUND_RESOURCE_ERROR,
+            CustomResponseCode.UNAUTHENTICATED_ERROR,
+            CustomResponseCode.UNAUTHORIZED_ERROR,
+            CustomResponseCode.DB_ERROR,
+            CustomResponseCode.SYSTEM_ERROR
+    })
+    @PreAuthorize("hasAnyRole('SALES_ADMIN', 'SUPER_ADMIN')")
+    @GetMapping("/{applicationId}")
+    public ResponseEntity<GlobalResponseDTO<AdminAgentApplicationDetailResponse>> getDetail(
+            @PathVariable Long applicationId
+    ) {
+        return ResponseEntity.ok(GlobalResponseDTO.success(
+                adminAgentApplicationService.getDetail(applicationId)
         ));
     }
 }
