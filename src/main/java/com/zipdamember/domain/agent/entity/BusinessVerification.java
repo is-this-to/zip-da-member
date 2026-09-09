@@ -72,4 +72,24 @@ public class BusinessVerification {
 
     @Column(name = "raw_response_ref", length = 255)
     private String rawResponseRef;
+
+    public static BusinessVerification create(
+            Long applicationId,
+            String requestBusinessNo,
+            LocalDate requestStartDate,
+            String requestRepresentativeName,
+            VerificationResultStatus resultStatus,
+            LocalDateTime checkedAt
+    ) {
+        BusinessVerification verification = new BusinessVerification();
+        verification.applicationId = applicationId;
+        verification.provider = VerificationProvider.NTS;
+        verification.verificationType = VerificationType.VALIDATION;
+        verification.requestBusinessNo = requestBusinessNo;
+        verification.requestStartDate = requestStartDate;
+        verification.requestRepresentativeName = requestRepresentativeName;
+        verification.resultStatus = resultStatus;
+        verification.checkedAt = checkedAt;
+        return verification;
+    }
 }

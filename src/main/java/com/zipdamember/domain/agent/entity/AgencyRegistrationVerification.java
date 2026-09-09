@@ -71,4 +71,30 @@ public class AgencyRegistrationVerification {
 
     @Column(name = "raw_response_ref", length = 255)
     private String rawResponseRef;
+
+    public static AgencyRegistrationVerification create(
+            Long applicationId,
+            String requestAgencyRegistrationNo,
+            String agencyName,
+            String requestRepresentativeName,
+            VerificationResultStatus resultStatus,
+            String businessStatus,
+            String roadAddress,
+            String jibunAddress,
+            LocalDateTime checkedAt
+    ) {
+        AgencyRegistrationVerification verification = new AgencyRegistrationVerification();
+        verification.applicationId = applicationId;
+        verification.provider = VerificationProvider.MOLIT;
+        verification.verificationType = VerificationType.VALIDATION;
+        verification.requestAgencyRegistrationNo = requestAgencyRegistrationNo;
+        verification.agencyName = agencyName;
+        verification.requestRepresentativeName = requestRepresentativeName;
+        verification.resultStatus = resultStatus;
+        verification.businessStatus = businessStatus;
+        verification.roadAddress = roadAddress;
+        verification.jibunAddress = jibunAddress;
+        verification.checkedAt = checkedAt;
+        return verification;
+    }
 }

@@ -2,6 +2,7 @@ package com.zipdamember.domain.agent.entity;
 
 import com.github.f4b6a3.tsid.TsidCreator;
 import com.zipdamember.domain.agent.constant.AgentApplicationStatus;
+import com.zipdamember.domain.agent.constant.VerificationResultStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -129,5 +130,28 @@ public class AgentApplication {
 
         status = AgentApplicationStatus.APPROVED;
         this.reviewerAdminId = reviewerAdminId;
+    }
+
+    public AgentApplicationStatus applyVerificationResults(
+            VerificationResultStatus businessVerificationResult,
+            VerificationResultStatus agencyRegistrationVerificationResult
+    ) {
+        if (status != AgentApplicationStatus.PENDING) {
+            throw new IllegalStateException("대기 상태의 신청만 검증 결과를 반영할 수 있습니다.");
+        }
+
+        if (businessVerificationResult == VerificationResultStatus.MISMATCHED
+                || agencyRegistrationVerificationResult == VerificationResultStatus.MISMATCHED) {
+            status = AgentApplicationStatus.INCORRECT_DATA;
+            return status;
+        }
+
+        if (businessVerificationResult == VerificationResultStatus.ERROR
+                || agencyRegistrationVerificationResult == VerificationResultStatus.ERROR) {
+            return status;
+        }
+
+        status = AgentApplicationStatus.UNDER_REVIEW;
+        return status;
     }
 }

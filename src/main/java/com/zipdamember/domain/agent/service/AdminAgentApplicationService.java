@@ -7,11 +7,15 @@ import com.zipdamember.domain.admin.constant.AdminAuditValueType;
 import com.zipdamember.domain.admin.constant.AdminRoleCode;
 import com.zipdamember.domain.admin.request.AdminAuditLogWriteRequest;
 import com.zipdamember.domain.admin.service.AdminAuditLogService;
+import com.zipdamember.domain.agent.client.MolitAgencyRegistrationClient;
+import com.zipdamember.domain.agent.client.NtsBusinessValidationClient;
 import com.zipdamember.domain.agent.constant.AgentApplicationStatus;
 import com.zipdamember.domain.agent.constant.AgentApplicationDocumentType;
 import com.zipdamember.domain.agent.constant.VerificationResultStatus;
 import com.zipdamember.domain.agent.entity.AgentApplication;
 import com.zipdamember.domain.agent.entity.AgentProfile;
+import com.zipdamember.domain.agent.entity.AgencyRegistrationVerification;
+import com.zipdamember.domain.agent.entity.BusinessVerification;
 import com.zipdamember.domain.agent.repository.AgencyRegistrationVerificationRepository;
 import com.zipdamember.domain.agent.repository.AgentApplicationDocumentRepository;
 import com.zipdamember.domain.agent.repository.AgentApplicationRepository;
@@ -54,6 +58,8 @@ public class AdminAgentApplicationService {
     private final AgencyRegistrationVerificationRepository agencyRegistrationVerificationRepository;
     private final MemberAccountRepository memberAccountRepository;
     private final AdminAuditLogService adminAuditLogService;
+    private final NtsBusinessValidationClient ntsBusinessValidationClient;
+    private final MolitAgencyRegistrationClient molitAgencyRegistrationClient;
 
     @Transactional(readOnly = true)
     public AdminAgentApplicationListResponse search(AdminAgentApplicationSearchRequest request) {
@@ -330,5 +336,111 @@ public class AdminAgentApplicationService {
     private BusinessException invalidApproval(String message) {
         // 승인 요청 오류 생성
         return new BusinessException(CustomResponseCode.INVALID_PARAMETER_ERROR, message);
+    }
+
+    @Transactional
+    public void verifyPendingApplications() {
+        // 외부 API 설정 검증
+        if (!ntsBusinessValidationClient.isConfigured() || !molitAgencyRegistrationClient.isConfigured()) {
+            return;
+        }
+
+        // 대기 신청 검증 대상 조회
+        List<AgentApplication> applications = agentApplicationRepository
+                .findTop100ByStatusOrderBySubmittedAtAscApplicationIdAsc(AgentApplicationStatus.PENDING);
+
+        // 대기 신청 검증 처리
+        for (AgentApplication application : applications) {
+            verifyPendingApplication(application);
+        }
+    }
+
+    private void verifyPendingApplication(AgentApplication application) {
+        // 국세청 사업자 검증 호출
+        var businessResult = ntsBusinessValidationClient.validate(application);
+
+        // 국토교통부 등록번호 검증 호출
+        var agencyRegistrationResult = molitAgencyRegistrationClient.validate(application);
+
+        // 검증 이력 확인 시각 생성
+        LocalDateTime checkedAt = LocalDateTime.now();
+
+        // 사업자 검증 이력 저장
+        businessVerificationRepository.save(BusinessVerification.create(
+                application.getApplicationId(),
+                application.getRequestBusinessNo(),
+                application.getRequestStartDate(),
+                application.getRequestRepresentativeName(),
+                businessResult.resultStatus(),
+                checkedAt
+        ));
+
+        // 등록번호 검증 이력 저장
+        agencyRegistrationVerificationRepository.save(AgencyRegistrationVerification.create(
+                application.getApplicationId(),
+                application.getRequestAgencyRegistrationNo(),
+                application.getRequestAgencyName(),
+                application.getRequestRepresentativeName(),
+                agencyRegistrationResult.resultStatus(),
+                agencyRegistrationResult.businessStatus(),
+                agencyRegistrationResult.roadAddress(),
+                agencyRegistrationResult.jibunAddress(),
+                checkedAt
+        ));
+
+        // 신청 상태 변경 전 값 보관
+        AgentApplicationStatus previousStatus = application.getStatus();
+
+        // 신청 상태 검증 결과 반영
+        AgentApplicationStatus changedStatus = application.applyVerificationResults(
+                businessResult.resultStatus(),
+                agencyRegistrationResult.resultStatus()
+        );
+
+        // 상태 변경 감사 로그 저장
+        if (previousStatus != changedStatus) {
+            recordVerificationStateChange(application, previousStatus, changedStatus);
+        }
+    }
+
+    private void recordVerificationStateChange(
+            AgentApplication application,
+            AgentApplicationStatus previousStatus,
+            AgentApplicationStatus changedStatus
+    ) {
+        // 검증 결과 감사 로그 저장
+        adminAuditLogService.recordSuccess(new AdminAuditLogWriteRequest(
+                null,
+                AdminAuditActorType.SYSTEM,
+                null,
+                resolveVerificationAction(changedStatus),
+                AdminAuditTargetService.MEMBER,
+                "AGENT_APPLICATION",
+                application.getApplicationId().toString(),
+                resolveVerificationReason(changedStatus),
+                null,
+                null,
+                List.of(new AdminAuditLogWriteRequest.Change(
+                        "status",
+                        previousStatus.name(),
+                        changedStatus.name(),
+                        AdminAuditValueType.ENUM,
+                        0
+                ))
+        ));
+    }
+
+    private AdminAuditAction resolveVerificationAction(AgentApplicationStatus changedStatus) {
+        // 검증 상태 감사 행위 결정
+        return changedStatus == AgentApplicationStatus.UNDER_REVIEW
+                ? AdminAuditAction.AGENT_APPLICATION_UNDER_REVIEW
+                : AdminAuditAction.AGENT_APPLICATION_INCORRECT_DATA;
+    }
+
+    private String resolveVerificationReason(AgentApplicationStatus changedStatus) {
+        // 검증 상태 감사 사유 결정
+        return changedStatus == AgentApplicationStatus.UNDER_REVIEW
+                ? "국세청·국토교통부 API 검증 일치"
+                : "국세청 또는 국토교통부 API 검증 불일치";
     }
 }
