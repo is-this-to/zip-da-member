@@ -10,9 +10,8 @@ public record AdminLoginRequest(
         @Size(max = 20)
         String adminCode,
 
-        @Schema(description = "관리자 비밀번호", example = "admin-password")
-        @NotBlank
-        @Size(min = 8, max = 20)
+        @Schema(description = "관리자 비밀번호. 최초 비밀번호 변경 대상은 생략 가능", example = "admin-password")
+        @Size(max = 20)
         String adminPassword
 ) {
 }

@@ -1,6 +1,5 @@
 package com.zipdamember.domain.auth.controller;
 
-import com.zipdamember.domain.admin.constant.AdminRoleCode;
 import com.zipdamember.domain.auth.request.AdminLoginRequest;
 import com.zipdamember.domain.auth.request.AdminPasswordChangeRequest;
 import com.zipdamember.domain.auth.response.AdminAuthResponse;
@@ -34,7 +33,10 @@ public class AdminAuthController {
 
     private final AdminAuthService adminAuthService;
 
-    @Operation(summary = "관리자 로그인 처리", description = "아이디와 비밀번호로 로그인")
+    @Operation(
+            summary = "관리자 로그인 처리",
+            description = "최초 비밀번호 변경 대상은 관리자 코드 존재 여부만 확인하고 토큰 없이 비밀번호 변경 필요 여부를 반환합니다. 일반 관리자는 비밀번호를 함께 검증합니다."
+    )
     @SecurityRequirements
     @CustomApiResponse(value = {
         CustomResponseCode.NOT_REGISTERED_ERROR,
@@ -52,40 +54,21 @@ public class AdminAuthController {
         return ResponseEntity.ok(GlobalResponseDTO.success(loginResponse));
     }
 
-    @Operation(summary = "관리자 최초 비밀번호 변경", description = "최초 로그인 후 새 비밀번호를 설정합니다.")
-    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "관리자 최초 비밀번호 등록", description = "인증 헤더 없이 관리자 코드, 새 비밀번호, 새 비밀번호 확인값을 검증하여 최초 비밀번호를 등록합니다. 성공 후 로그인 화면에서 다시 로그인해야 합니다.")
+    @SecurityRequirements
     @CustomApiResponse(value = {
         CustomResponseCode.INVALID_PARAMETER_ERROR,
-        CustomResponseCode.UNAUTHENTICATED_ERROR,
-        CustomResponseCode.UNAUTHORIZED_ERROR,
-        CustomResponseCode.INVALID_TOKEN_ERROR,
+        CustomResponseCode.NOT_REGISTERED_ERROR,
         CustomResponseCode.DB_ERROR,
         CustomResponseCode.SYSTEM_ERROR
     })
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'CS_ADMIN', 'SALES_ADMIN')")
-    @PatchMapping("/admin-passwords/current")
-    public ResponseEntity<GlobalResponseDTO<Void>> changeInitialPassword(
+    @PatchMapping("/admin-passwords/initial")
+    public ResponseEntity<GlobalResponseDTO<Void>> registerInitialPassword(
             @Valid @RequestBody AdminPasswordChangeRequest request,
-            HttpServletRequest httpServletRequest,
-            Authentication authentication
+            HttpServletRequest httpServletRequest
     ) {
-        // 요청 관리자 식별자 추출
-        Long adminId = Long.parseLong(authentication.getName());
-
-        // 요청 관리자 역할 추출
-        AdminRoleCode actorRole = authentication.getAuthorities().stream()
-                .map(authority -> authority.getAuthority())
-                .filter(authority -> authority.equals("ROLE_SUPER_ADMIN")
-                        || authority.equals("ROLE_CS_ADMIN")
-                        || authority.equals("ROLE_SALES_ADMIN"))
-                .map(authority -> AdminRoleCode.valueOf(authority.substring("ROLE_".length())))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("관리자 역할 정보를 찾을 수 없습니다."));
-
         // 최초 비밀번호 변경 처리
-        adminAuthService.changeInitialPassword(
-                adminId,
-                actorRole,
+        adminAuthService.registerInitialPassword(
                 request,
                 httpServletRequest.getRemoteAddr(),
                 httpServletRequest.getHeader("User-Agent")

@@ -26,21 +26,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AdminAccountService {
-    private static final String INITIAL_PASSWORD_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            + "abcdefghijklmnopqrstuvwxyz"
-            + "0123456789!@#$";
-    private static final int INITIAL_PASSWORD_LENGTH = 20;
-
     private final AdminAccountQueryRepository adminAccountQueryRepository;
     private final AdminRoleAssignmentRepository adminRoleAssignmentRepository;
     private final AdminRepository adminRepository;
@@ -59,13 +54,10 @@ public class AdminAccountService {
             throw new DuplicatedResourceException("이미 사용 중인 관리자 코드입니다.");
         }
 
-        // 초기 비밀번호 난수 생성
-        String initialPassword = generateInitialPassword();
-
         // 관리자 계정 생성
         Admin admin = Admin.create(
                 request.adminCode(),
-                passwordEncoder.encode(initialPassword),
+                passwordEncoder.encode(UUID.randomUUID().toString()),
                 request.adminName()
         );
         Admin savedAdmin = adminRepository.save(admin);
@@ -125,8 +117,7 @@ public class AdminAccountService {
         // 생성 관리자 응답 구성
         return AdminAccountCreateResponse.of(
                 savedAdmin,
-                assignment.getRoleCode(),
-                initialPassword
+                assignment.getRoleCode()
         );
     }
 
@@ -139,11 +130,19 @@ public class AdminAccountService {
             Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("adminId"))
         );
 
-        // 검색어 패턴 구성
-        String pattern = toLikePattern(request.keyword());
+        // 관리자 코드 검색어 패턴 구성
+        String adminCodePattern = toLikePattern(request.adminCode());
+
+        // 관리자 성명 검색어 패턴 구성
+        String adminNamePattern = toLikePattern(request.adminName());
 
         // 관리자 목록 조회
-        Page<Admin> admins = adminAccountQueryRepository.searchAdmins(pattern, request.role(), pageable);
+        Page<Admin> admins = adminAccountQueryRepository.searchAdmins(
+            adminCodePattern,
+            adminNamePattern,
+            request.role(),
+            pageable
+        );
 
         // 관리자 식별자 추출
         List<Long> adminIds = admins.getContent().stream().map(Admin::getAdminId).toList();
@@ -214,16 +213,4 @@ public class AdminAccountService {
         return "%" + keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
     }
 
-    private String generateInitialPassword() {
-        SecureRandom secureRandom = new SecureRandom();
-        StringBuilder password = new StringBuilder(INITIAL_PASSWORD_LENGTH);
-
-        // 초기 비밀번호 난수 구성
-        for (int index = 0; index < INITIAL_PASSWORD_LENGTH; index++) {
-            int randomIndex = secureRandom.nextInt(INITIAL_PASSWORD_CHARACTERS.length());
-            password.append(INITIAL_PASSWORD_CHARACTERS.charAt(randomIndex));
-        }
-
-        return password.toString();
-    }
 }

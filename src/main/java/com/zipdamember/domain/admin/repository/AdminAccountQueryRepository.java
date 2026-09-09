@@ -29,11 +29,20 @@ public class AdminAccountQueryRepository {
         this.queryFactory = new JPAQueryFactory(entityManager);
     }
 
-    public Page<Admin> searchAdmins(String pattern, AdminRoleCode role, Pageable pageable) {
+    public Page<Admin> searchAdmins(
+            String adminCodePattern,
+            String adminNamePattern,
+            AdminRoleCode role,
+            Pageable pageable
+    ) {
         // 관리자 목록 조회
         List<Admin> content = queryFactory
             .selectFrom(admin)
-            .where(keywordContains(pattern), roleExists(role))
+            .where(
+                adminCodeContains(adminCodePattern),
+                adminNameContains(adminNamePattern),
+                roleExists(role)
+            )
             .orderBy(admin.createdAt.desc(), admin.adminId.desc())
             .offset(pageable.getOffset())
             .limit(pageable.getPageSize())
@@ -43,7 +52,11 @@ public class AdminAccountQueryRepository {
         var countQuery = queryFactory
             .select(admin.count())
             .from(admin)
-            .where(keywordContains(pattern), roleExists(role));
+            .where(
+                adminCodeContains(adminCodePattern),
+                adminNameContains(adminNamePattern),
+                roleExists(role)
+            );
 
         return PageableExecutionUtils.getPage(
             content,
@@ -72,12 +85,18 @@ public class AdminAccountQueryRepository {
             .toList();
     }
 
-    private BooleanExpression keywordContains(String pattern) {
+    private BooleanExpression adminCodeContains(String pattern) {
         if (pattern == null) {
             return null;
         }
-        return admin.adminCode.like(pattern, '!')
-            .or(admin.adminName.like(pattern, '!'));
+        return admin.adminCode.like(pattern, '!');
+    }
+
+    private BooleanExpression adminNameContains(String pattern) {
+        if (pattern == null) {
+            return null;
+        }
+        return admin.adminName.like(pattern, '!');
     }
 
     private BooleanExpression roleExists(AdminRoleCode role) {

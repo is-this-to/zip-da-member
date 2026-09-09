@@ -18,23 +18,18 @@ public record AdminAccountCreateResponse(
         AdminRoleCode adminRole,
 
         @Schema(description = "최초 로그인 비밀번호 변경 필요 여부", example = "true")
-        boolean passwordChangeRequired,
-
-        @Schema(description = "신규 관리자에게 1회만 전달할 초기 비밀번호. 로그·감사 로그에 저장하지 않음")
-        String initialPassword
+        boolean passwordChangeRequired
 ) {
     public static AdminAccountCreateResponse of(
             Admin admin,
-            AdminRoleCode adminRole,
-            String initialPassword
+            AdminRoleCode adminRole
     ) {
         return new AdminAccountCreateResponse(
                 admin.getAdminId().toString(),
                 admin.getAdminCode(),
                 admin.getAdminName(),
                 adminRole,
-                Boolean.TRUE.equals(admin.getPasswordChangeRequired()),
-                initialPassword
+                Boolean.TRUE.equals(admin.getPasswordChangeRequired())
         );
     }
 }

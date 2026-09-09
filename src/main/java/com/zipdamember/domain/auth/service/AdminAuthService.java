@@ -49,9 +49,7 @@ public class AdminAuthService {
     private final AdminAuditLogService adminAuditLogService;
 
     @Transactional(rollbackFor = Exception.class)
-    public void changeInitialPassword(
-            Long adminId,
-            AdminRoleCode actorRole,
+    public void registerInitialPassword(
             AdminPasswordChangeRequest request,
             String ipAddress,
             String userAgent
@@ -64,9 +62,9 @@ public class AdminAuthService {
             );
         }
 
-        // 관리자 계정 조회
-        Admin admin = adminRepository.findById(adminId)
-                .orElseThrow(() -> new InvalidTokenException("유효하지 않은 관리자 토큰입니다."));
+        // 관리자 코드 존재 확인
+        Admin admin = adminRepository.findByAdminCode(request.adminCode())
+                .orElseThrow(() -> new NotRegisteredException("등록되지 않은 관리자 코드입니다."));
 
         // 최초 비밀번호 변경 대상 검증
         if (!Boolean.TRUE.equals(admin.getPasswordChangeRequired())) {
@@ -76,18 +74,29 @@ public class AdminAuthService {
             );
         }
 
+        // 활성 관리자 역할 조회
+        List<AdminRoleCode> roles = adminRoleAssignmentRepository
+                .findAllByAdminId(admin.getAdminId()).stream()
+                .map(assignment -> assignment.getRoleCode())
+                .distinct()
+                .toList();
+
+        if (roles.isEmpty()) {
+            throw new NotRegisteredException("등록되지 않은 관리자 코드입니다.");
+        }
+
         // 새 비밀번호 암호화 저장
         admin.changePassword(passwordEncoder.encode(request.newPassword()));
 
         // 최초 비밀번호 변경 감사 로그 저장
         adminAuditLogService.recordSuccess(new AdminAuditLogWriteRequest(
-                adminId,
+                admin.getAdminId(),
                 AdminAuditActorType.ADMIN,
-                actorRole,
+                roles.getFirst(),
                 AdminAuditAction.ADMIN_PASSWORD_CHANGE,
                 AdminAuditTargetService.MEMBER,
                 "ADMIN",
-                adminId.toString(),
+                admin.getAdminId().toString(),
                 "최초 관리자 비밀번호 변경",
                 ipAddress,
                 userAgent,
@@ -109,8 +118,11 @@ public class AdminAuthService {
 
         // TODO: 삭제·정지·잠금 상태 관리자와 로그인 실패 횟수/잠금 해제 정책을 검증한다.
 
-        // 비밀번호 체크
-        if(!passwordEncoder.matches(adminLoginRequest.adminPassword(), admin.getAdminPassword())) {
+        // 일반 로그인 비밀번호 검증
+        if (!Boolean.TRUE.equals(admin.getPasswordChangeRequired())
+                && (adminLoginRequest.adminPassword() == null
+                || adminLoginRequest.adminPassword().isBlank()
+                || !passwordEncoder.matches(adminLoginRequest.adminPassword(), admin.getAdminPassword()))) {
             // TODO: 로그인 실패 이력을 기록하고 정책에 따라 계정을 잠근다.
 
             throw new NotRegisteredException("아이디와 비밀번호를 확인해주세요.");
@@ -125,6 +137,17 @@ public class AdminAuthService {
 
         if (roles.isEmpty()) {
             throw new NotRegisteredException("아이디와 비밀번호를 확인해주세요.");
+        }
+
+        // 최초 로그인 비밀번호 설정 안내
+        if (Boolean.TRUE.equals(admin.getPasswordChangeRequired())) {
+            return new AdminAuthResponse(
+                    String.valueOf(admin.getAdminId()),
+                    roles,
+                    true,
+                    null,
+                    null
+            );
         }
 
         // TODO: 로그인 성공 이력(IP, User-Agent, 로그인 유형)을 기록한다.
