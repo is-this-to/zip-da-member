@@ -93,6 +93,22 @@ public class AgentProfile {
         this.approvedAt = approvedAt;
     }
 
+    public void changeOperatingStatus(
+            AgentOperatingStatus operatingStatus,
+            Long statusChangedBy
+    ) {
+        if (operatingStatus == null) {
+            throw new IllegalArgumentException("중개소 영업 상태는 필수입니다.");
+        }
+        if (statusChangedBy == null || statusChangedBy <= 0) {
+            throw new IllegalArgumentException("상태 변경 관리자 ID는 필수입니다.");
+        }
+
+        this.operatingStatus = operatingStatus;
+        this.statusChangedBy = statusChangedBy;
+        this.statusChangedAt = LocalDateTime.now();
+    }
+
     @PrePersist
     private void generateAgentId() {
         if (agentId == null) {
