@@ -1,5 +1,8 @@
 package com.zipdamember.global.security.filter;
 
+import com.zipdamember.global.security.oauth2.DelegatingOAuth2UserService;
+import com.zipdamember.global.security.oauth2.OAuth2FailureHandler;
+import com.zipdamember.global.security.oauth2.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +28,13 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity httpSecurity, HeaderAuthenticationFilter headerAuthenticationFilter) {
+    public SecurityFilterChain filterChain(
+            HttpSecurity httpSecurity,
+            HeaderAuthenticationFilter headerAuthenticationFilter,
+            DelegatingOAuth2UserService delegatingOAuth2UserService,
+            OAuth2SuccessHandler oAuth2SuccessHandler,
+            OAuth2FailureHandler oAuth2FailureHandler
+    ) throws Exception {
         return httpSecurity
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 비활성화
             .httpBasic(AbstractHttpConfigurer::disable) // 화면 생성 비활성화
@@ -33,14 +42,13 @@ public class SecurityConfiguration {
             .csrf(AbstractHttpConfigurer::disable) // CSRF 토큰 인증 비활성화
             .addFilterBefore(headerAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(request -> request.anyRequest().permitAll()) // 인증 여부와 무관하게 모든 요청 통과
-//               TODO: 추후 2Oauth 추가
-//                .oauth2Login(oauth2 ->
-//                        oauth2.authorizationEndpoint(endpoint -> endpoint.baseUri("/api/auth/oauth2/authorization")) // 기본 경로 설정
-//                                .redirectionEndpoint(endpoint -> endpoint.baseUri("/api/auth/oauth2/callback/*")) // 리다이렉트 경로 설정
-//                                .userInfoEndpoint(userInfo -> userInfo.userService(delegatingOAuth2UserService)) // provider routing 처리를 할 서비스 등록
-//                                .successHandler(oAuth2SuccessHandler) // 성공 핸들러 등록
-//                                .failureHandler(oAuthFailureHandler) // 실패 핸들러 등록
-//                )
+            .oauth2Login(oauth2 -> oauth2
+                    .authorizationEndpoint(endpoint -> endpoint.baseUri("/api/auth/oauth2/authorization"))
+                    .redirectionEndpoint(endpoint -> endpoint.baseUri("/api/auth/oauth2/callback/*"))
+                    .userInfoEndpoint(userInfo -> userInfo.userService(delegatingOAuth2UserService))
+                    .successHandler(oAuth2SuccessHandler)
+                    .failureHandler(oAuth2FailureHandler)
+            )
             .build();
     }
 }
