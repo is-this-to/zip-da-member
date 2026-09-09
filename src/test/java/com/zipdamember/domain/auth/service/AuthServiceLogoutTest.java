@@ -2,6 +2,7 @@ package com.zipdamember.domain.auth.service;
 
 import com.zipdamember.domain.auth.entity.LoginSession;
 import com.zipdamember.domain.auth.repository.LoginSessionRepository;
+import com.zipdamember.domain.file.service.FileService;
 import com.zipdamember.domain.member.entity.MemberAccount;
 import com.zipdamember.domain.member.repository.MemberAccountRepository;
 import com.zipdamember.domain.term.repository.TermAgreementRepository;
@@ -44,7 +45,8 @@ class AuthServiceLogoutTest {
         service = new AuthService(mock(MemberAccountRepository.class), mock(PasswordEncoder.class),
             sessions, jwt, new CookieManager(config), config,
             mock(TermRepository.class), mock(EmailVerificationHasher.class),
-            mock(VerificationEmailRepository.class), mock(TermAgreementRepository.class));
+            mock(VerificationEmailRepository.class), mock(TermAgreementRepository.class),
+            mock(FileService.class));
         MemberAccount member = new MemberAccount();
         member.setMemberId(1L);
         token = jwt.generateRefreshToken(member);

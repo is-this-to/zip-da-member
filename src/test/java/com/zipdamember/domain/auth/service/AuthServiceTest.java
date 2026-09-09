@@ -2,6 +2,7 @@ package com.zipdamember.domain.auth.service;
 
 import com.zipdamember.domain.auth.entity.LoginSession;
 import com.zipdamember.domain.auth.repository.LoginSessionRepository;
+import com.zipdamember.domain.file.service.FileService;
 import com.zipdamember.domain.auth.request.LoginRequest;
 import com.zipdamember.domain.member.constant.MemberStatus;
 import com.zipdamember.domain.member.entity.MemberAccount;
@@ -52,7 +53,8 @@ class AuthServiceTest {
         service = new AuthService(
             members, encoder, sessions, jwt, new CookieManager(config), config,
             mock(TermRepository.class), mock(EmailVerificationHasher.class),
-            mock(VerificationEmailRepository.class), mock(TermAgreementRepository.class)
+            mock(VerificationEmailRepository.class), mock(TermAgreementRepository.class),
+            mock(FileService.class)
         );
         member = new MemberAccount();
         member.setMemberId(1L);
