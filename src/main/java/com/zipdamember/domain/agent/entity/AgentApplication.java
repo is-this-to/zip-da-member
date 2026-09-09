@@ -118,4 +118,16 @@ public class AgentApplication {
         this.supplementDeadline = supplementDeadline;
         this.reviewerAdminId = reviewerAdminId;
     }
+
+    public void approve(Long reviewerAdminId) {
+        if (status != AgentApplicationStatus.UNDER_REVIEW) {
+            throw new IllegalStateException("심사 중 상태의 신청만 승인할 수 있습니다.");
+        }
+        if (reviewerAdminId == null || reviewerAdminId <= 0) {
+            throw new IllegalArgumentException("심사 관리자 아이디는 필수입니다.");
+        }
+
+        status = AgentApplicationStatus.APPROVED;
+        this.reviewerAdminId = reviewerAdminId;
+    }
 }

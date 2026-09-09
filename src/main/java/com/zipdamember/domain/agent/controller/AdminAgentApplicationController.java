@@ -1,9 +1,11 @@
 package com.zipdamember.domain.agent.controller;
 
 import com.zipdamember.domain.admin.constant.AdminRoleCode;
+import com.zipdamember.domain.agent.request.AdminAgentApplicationApproveRequest;
 import com.zipdamember.domain.agent.request.AdminAgentApplicationSearchRequest;
 import com.zipdamember.domain.agent.request.AdminAgentApplicationSupplementRequest;
 import com.zipdamember.domain.agent.response.AdminAgentApplicationDetailResponse;
+import com.zipdamember.domain.agent.response.AdminAgentApplicationApproveResponse;
 import com.zipdamember.domain.agent.response.AdminAgentApplicationListResponse;
 import com.zipdamember.domain.agent.response.AdminAgentApplicationSupplementResponse;
 import com.zipdamember.domain.agent.service.AdminAgentApplicationService;
@@ -94,6 +96,46 @@ public class AdminAgentApplicationController {
         // 중개사 신청 보완 요청
         return ResponseEntity.ok(GlobalResponseDTO.success(
                 adminAgentApplicationService.requestSupplement(
+                        applicationId,
+                        request,
+                        reviewerAdminId,
+                        reviewerRole,
+                        httpServletRequest.getRemoteAddr(),
+                        httpServletRequest.getHeader("User-Agent")
+                )
+        ));
+    }
+
+    @Operation(summary = "중개사 신청 승인")
+    @CustomApiResponse(value = {
+            CustomResponseCode.INVALID_PARAMETER_ERROR,
+            CustomResponseCode.NOT_FOUND_RESOURCE_ERROR,
+            CustomResponseCode.UNAUTHENTICATED_ERROR,
+            CustomResponseCode.UNAUTHORIZED_ERROR,
+            CustomResponseCode.DB_ERROR,
+            CustomResponseCode.SYSTEM_ERROR
+    })
+    @PreAuthorize("hasAnyRole('SALES_ADMIN', 'SUPER_ADMIN')")
+    @PatchMapping("/{applicationId}/approval")
+    public ResponseEntity<GlobalResponseDTO<AdminAgentApplicationApproveResponse>> approve(
+            @PathVariable Long applicationId,
+            @Valid @RequestBody AdminAgentApplicationApproveRequest request,
+            Authentication authentication,
+            jakarta.servlet.http.HttpServletRequest httpServletRequest
+    ) {
+        // 요청 관리자 식별자
+        Long reviewerAdminId = Long.parseLong(authentication.getName());
+
+        // 요청 관리자 역할
+        AdminRoleCode reviewerRole = authentication.getAuthorities().stream()
+                .map(authority -> AdminRoleCode.fromSecurityAuthority(authority.getAuthority()))
+                .flatMap(Optional::stream)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("관리자 역할 정보를 찾을 수 없습니다."));
+
+        // 중개사 신청 승인
+        return ResponseEntity.ok(GlobalResponseDTO.success(
+                adminAgentApplicationService.approve(
                         applicationId,
                         request,
                         reviewerAdminId,
