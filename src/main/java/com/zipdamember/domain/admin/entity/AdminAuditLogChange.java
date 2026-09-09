@@ -52,4 +52,22 @@ public class AdminAuditLogChange {
     @Column(name = "display_order", nullable = false, updatable = false,
             columnDefinition = "SMALLINT UNSIGNED")
     private Integer displayOrder = 0;
+
+    public static AdminAuditLogChange create(
+            Long auditLogId,
+            String fieldName,
+            String beforeValue,
+            String afterValue,
+            AdminAuditValueType valueType,
+            Integer displayOrder
+    ) {
+        AdminAuditLogChange auditLogChange = new AdminAuditLogChange();
+        auditLogChange.auditLogId = auditLogId;
+        auditLogChange.fieldName = fieldName;
+        auditLogChange.beforeValue = beforeValue;
+        auditLogChange.afterValue = afterValue;
+        auditLogChange.valueType = valueType;
+        auditLogChange.displayOrder = displayOrder;
+        return auditLogChange;
+    }
 }

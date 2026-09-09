@@ -82,4 +82,34 @@ public class AdminAuditLog {
     @Column(name = "occurred_at", nullable = false, updatable = false)
     private LocalDateTime occurredAt;
 
+    public static AdminAuditLog create(
+            Long adminId,
+            AdminAuditActorType actorType,
+            AdminRoleCode roleCode,
+            AdminAuditAction action,
+            AdminAuditTargetService targetService,
+            String targetType,
+            String targetId,
+            String reason,
+            String ipAddress,
+            String userAgent,
+            String requestId,
+            AdminAuditResult result
+    ) {
+        AdminAuditLog auditLog = new AdminAuditLog();
+        auditLog.adminId = adminId;
+        auditLog.actorType = actorType;
+        auditLog.roleCode = roleCode;
+        auditLog.action = action;
+        auditLog.targetService = targetService;
+        auditLog.targetType = targetType;
+        auditLog.targetId = targetId;
+        auditLog.reason = reason;
+        auditLog.ipAddress = ipAddress;
+        auditLog.userAgent = userAgent;
+        auditLog.requestId = requestId;
+        auditLog.result = result;
+        return auditLog;
+    }
+
 }

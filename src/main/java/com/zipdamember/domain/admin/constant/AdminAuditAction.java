@@ -2,6 +2,7 @@ package com.zipdamember.domain.admin.constant;
 
 public enum AdminAuditAction {
     ADMIN_ACCOUNT_CREATE("관리자 계정 생성"),
+    ADMIN_PASSWORD_CHANGE("관리자 비밀번호 변경"),
     ADMIN_ROLE_ASSIGN("관리자 역할 부여"),
     ADMIN_ROLE_REVOKE("관리자 역할 회수"),
     MEMBER_PRIVATE_DATA_VIEW("회원 개인정보 원문 확인"),

@@ -1,15 +1,24 @@
 package com.zipdamember.domain.auth.service;
 
 import com.zipdamember.domain.admin.constant.AdminRoleCode;
+import com.zipdamember.domain.admin.constant.AdminAuditAction;
+import com.zipdamember.domain.admin.constant.AdminAuditActorType;
+import com.zipdamember.domain.admin.constant.AdminAuditTargetService;
+import com.zipdamember.domain.admin.constant.AdminAuditValueType;
 import com.zipdamember.domain.admin.entity.Admin;
+import com.zipdamember.domain.admin.request.AdminAuditLogWriteRequest;
+import com.zipdamember.domain.admin.service.AdminAuditLogService;
 import com.zipdamember.domain.auth.entity.AdminLoginSession;
 import com.zipdamember.domain.auth.repository.AdminLoginSessionRepository;
 import com.zipdamember.domain.admin.repository.AdminRoleAssignmentRepository;
 import com.zipdamember.domain.admin.repository.AdminRepository;
 import com.zipdamember.domain.auth.request.AdminLoginRequest;
+import com.zipdamember.domain.auth.request.AdminPasswordChangeRequest;
 import com.zipdamember.domain.auth.response.AdminAuthResponse;
 import com.zipdamember.global.error.custom.business.InvalidTokenException;
 import com.zipdamember.global.error.custom.business.NotRegisteredException;
+import com.zipdamember.global.error.custom.BusinessException;
+import com.zipdamember.global.response.constant.CustomResponseCode;
 import com.zipdamember.global.jwt.JwtConfig;
 import com.zipdamember.global.jwt.JwtProvider;
 import com.zipdamember.global.jwt.request.AdminTokenGenerateRequest;
@@ -37,6 +46,60 @@ public class AdminAuthService {
     private final JwtProvider jwtProvider;
     private final JwtConfig jwtConfig;
     private final CookieManager cookieManager;
+    private final AdminAuditLogService adminAuditLogService;
+
+    @Transactional(rollbackFor = Exception.class)
+    public void changeInitialPassword(
+            Long adminId,
+            AdminRoleCode actorRole,
+            AdminPasswordChangeRequest request,
+            String ipAddress,
+            String userAgent
+    ) {
+        // 새 비밀번호 일치 검증
+        if (!request.newPassword().equals(request.newPasswordConfirm())) {
+            throw new BusinessException(
+                    CustomResponseCode.INVALID_PARAMETER_ERROR,
+                    "새 비밀번호와 비밀번호 확인이 일치하지 않습니다."
+            );
+        }
+
+        // 관리자 계정 조회
+        Admin admin = adminRepository.findById(adminId)
+                .orElseThrow(() -> new InvalidTokenException("유효하지 않은 관리자 토큰입니다."));
+
+        // 최초 비밀번호 변경 대상 검증
+        if (!Boolean.TRUE.equals(admin.getPasswordChangeRequired())) {
+            throw new BusinessException(
+                    CustomResponseCode.INVALID_PARAMETER_ERROR,
+                    "최초 비밀번호 변경 대상이 아닙니다."
+            );
+        }
+
+        // 새 비밀번호 암호화 저장
+        admin.changePassword(passwordEncoder.encode(request.newPassword()));
+
+        // 최초 비밀번호 변경 감사 로그 저장
+        adminAuditLogService.recordSuccess(new AdminAuditLogWriteRequest(
+                adminId,
+                AdminAuditActorType.ADMIN,
+                actorRole,
+                AdminAuditAction.ADMIN_PASSWORD_CHANGE,
+                AdminAuditTargetService.MEMBER,
+                "ADMIN",
+                adminId.toString(),
+                "최초 관리자 비밀번호 변경",
+                ipAddress,
+                userAgent,
+                List.of(new AdminAuditLogWriteRequest.Change(
+                        "passwordChangeRequired",
+                        Boolean.TRUE.toString(),
+                        Boolean.FALSE.toString(),
+                        AdminAuditValueType.BOOLEAN,
+                        0
+                ))
+        ));
+    }
 
     @Transactional(rollbackFor = Exception.class)
     public AdminAuthResponse login(HttpServletRequest request, HttpServletResponse response, AdminLoginRequest adminLoginRequest) {
@@ -55,7 +118,7 @@ public class AdminAuthService {
 
         // 활성 관리자 역할 조회 및 토큰 반영
         List<AdminRoleCode> roles = adminRoleAssignmentRepository
-            .findAllByAdminIdAndDeletedAtIsNull(admin.getAdminId()).stream()
+            .findAllByAdminId(admin.getAdminId()).stream()
             .map(assignment -> assignment.getRoleCode())
             .distinct()
             .toList();
@@ -126,7 +189,7 @@ public class AdminAuthService {
 
         // 활성 관리자 역할 조회 및 토큰 반영
         List<AdminRoleCode> roles = adminRoleAssignmentRepository
-            .findAllByAdminIdAndDeletedAtIsNull(admin.getAdminId()).stream()
+            .findAllByAdminId(admin.getAdminId()).stream()
             .map(assignment -> assignment.getRoleCode())
             .distinct()
             .toList();
