@@ -1,5 +1,13 @@
 package com.zipdamember.domain.agent.service;
 
+import com.zipdamember.domain.admin.constant.AdminAuditAction;
+import com.zipdamember.domain.admin.constant.AdminAuditActorType;
+import com.zipdamember.domain.admin.constant.AdminAuditTargetService;
+import com.zipdamember.domain.admin.constant.AdminAuditValueType;
+import com.zipdamember.domain.admin.constant.AdminRoleCode;
+import com.zipdamember.domain.admin.request.AdminAuditLogWriteRequest;
+import com.zipdamember.domain.admin.service.AdminAuditLogService;
+import com.zipdamember.domain.agent.constant.AgentApplicationStatus;
 import com.zipdamember.domain.agent.entity.AgentApplication;
 import com.zipdamember.domain.agent.repository.AgencyRegistrationVerificationRepository;
 import com.zipdamember.domain.agent.repository.AgentApplicationDocumentRepository;
@@ -7,17 +15,23 @@ import com.zipdamember.domain.agent.repository.AgentApplicationRepository;
 import com.zipdamember.domain.agent.repository.AdminAgentApplicationQueryRepository;
 import com.zipdamember.domain.agent.repository.BusinessVerificationRepository;
 import com.zipdamember.domain.agent.request.AdminAgentApplicationSearchRequest;
+import com.zipdamember.domain.agent.request.AdminAgentApplicationSupplementRequest;
 import com.zipdamember.domain.agent.response.AdminAgencyRegistrationVerificationResponse;
 import com.zipdamember.domain.agent.response.AdminAgentApplicationDetailResponse;
 import com.zipdamember.domain.agent.response.AdminAgentApplicationDocumentResponse;
 import com.zipdamember.domain.agent.response.AdminAgentApplicationListResponse;
+import com.zipdamember.domain.agent.response.AdminAgentApplicationSupplementResponse;
 import com.zipdamember.domain.agent.response.AdminBusinessVerificationResponse;
 import com.zipdamember.domain.member.repository.MemberAccountRepository;
+import com.zipdamember.global.error.custom.BusinessException;
 import com.zipdamember.global.error.custom.business.NotFoundResourceException;
+import com.zipdamember.global.response.constant.CustomResponseCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +43,7 @@ public class AdminAgentApplicationService {
     private final BusinessVerificationRepository businessVerificationRepository;
     private final AgencyRegistrationVerificationRepository agencyRegistrationVerificationRepository;
     private final MemberAccountRepository memberAccountRepository;
+    private final AdminAuditLogService adminAuditLogService;
 
     @Transactional(readOnly = true)
     public AdminAgentApplicationListResponse search(AdminAgentApplicationSearchRequest request) {
@@ -83,5 +98,67 @@ public class AdminAgentApplicationService {
                 agencyRegistrationVerification,
                 documents
         );
+    }
+
+    @Transactional
+    public AdminAgentApplicationSupplementResponse requestSupplement(
+            Long applicationId,
+            AdminAgentApplicationSupplementRequest request,
+            Long reviewerAdminId,
+            AdminRoleCode reviewerRole,
+            String ipAddress,
+            String userAgent
+    ) {
+        // 중개사 신청 조회
+        AgentApplication application = agentApplicationRepository.findById(applicationId)
+                .orElseThrow(() -> new NotFoundResourceException("중개사 신청 정보를 찾을 수 없습니다."));
+
+        // 심사 상태 검증
+        if (application.getStatus() != AgentApplicationStatus.UNDER_REVIEW) {
+            throw new BusinessException(
+                    CustomResponseCode.INVALID_PARAMETER_ERROR,
+                    "심사 중 상태의 신청만 보완 요청할 수 있습니다."
+            );
+        }
+
+        // 보완 요청 상태 변경
+        application.requestSupplement(
+                request.supplementReason(),
+                request.supplementDeadline(),
+                reviewerAdminId
+        );
+
+        // 보완 요청 감사 로그
+        adminAuditLogService.recordSuccess(new AdminAuditLogWriteRequest(
+                reviewerAdminId,
+                AdminAuditActorType.ADMIN,
+                reviewerRole,
+                AdminAuditAction.AGENT_APPLICATION_SUPPLEMENT_REQUEST,
+                AdminAuditTargetService.MEMBER,
+                "AGENT_APPLICATION",
+                application.getApplicationId().toString(),
+                request.supplementReason(),
+                ipAddress,
+                userAgent,
+                List.of(
+                        new AdminAuditLogWriteRequest.Change(
+                                "status",
+                                AgentApplicationStatus.UNDER_REVIEW.name(),
+                                application.getStatus().name(),
+                                AdminAuditValueType.ENUM,
+                                0
+                        ),
+                        new AdminAuditLogWriteRequest.Change(
+                                "supplementDeadline",
+                                null,
+                                request.supplementDeadline().toString(),
+                                AdminAuditValueType.DATETIME,
+                                1
+                        )
+                )
+        ));
+
+        // 보완 요청 응답
+        return AdminAgentApplicationSupplementResponse.from(application);
     }
 }

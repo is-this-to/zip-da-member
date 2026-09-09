@@ -94,4 +94,28 @@ public class AgentApplication {
             status = AgentApplicationStatus.PENDING;
         }
     }
+
+    public void requestSupplement(
+            String supplementReason,
+            LocalDateTime supplementDeadline,
+            Long reviewerAdminId
+    ) {
+        if (status != AgentApplicationStatus.UNDER_REVIEW) {
+            throw new IllegalStateException("심사 중 상태의 신청만 보완 요청할 수 있습니다.");
+        }
+        if (supplementReason == null || supplementReason.isBlank()) {
+            throw new IllegalArgumentException("보완 요청 사유는 필수입니다.");
+        }
+        if (supplementDeadline == null || !supplementDeadline.isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("보완 마감일은 현재 이후여야 합니다.");
+        }
+        if (reviewerAdminId == null || reviewerAdminId <= 0) {
+            throw new IllegalArgumentException("심사 관리자 아이디는 필수입니다.");
+        }
+
+        status = AgentApplicationStatus.REJECTED;
+        rejectReason = supplementReason;
+        this.supplementDeadline = supplementDeadline;
+        this.reviewerAdminId = reviewerAdminId;
+    }
 }
