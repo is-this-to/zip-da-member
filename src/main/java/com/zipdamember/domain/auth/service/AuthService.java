@@ -19,6 +19,7 @@ import com.zipdamember.domain.verification.constant.EmailVerificationPurposePoli
 import com.zipdamember.domain.verification.entity.EmailVerification;
 import com.zipdamember.domain.verification.repository.VerificationEmailRepository;
 import com.zipdamember.domain.verification.util.EmailVerificationHasher;
+import com.zipdamember.domain.verification.util.VerificationIdParser;
 import com.zipdamember.global.cookie.CookieManager;
 import com.zipdamember.global.error.custom.BusinessException;
 import com.zipdamember.global.error.custom.business.AlreadyRegisteredException;
@@ -188,13 +189,19 @@ public class AuthService {
     public CreateMemberResponse signup(CreateMemberRequest request) {
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
         String nickname = request.nickname().trim();
+        Long profileFileId = request.profileFileId() == null ? null : parseProfileFileId(request.profileFileId());
         LocalDateTime now = LocalDateTime.now();
 
         // 비밀번호랑 비밀번호 확인 비교
         validatePasswordConfirmation(request);
 
         // 이메일 인증된건지 확인
-        EmailVerification emailVerification = validateEmailVerification(request.verificationId(), normalizedEmail, now, EmailVerificationPurposePolicy.SIGNUP);
+        EmailVerification emailVerification = validateEmailVerification(
+                VerificationIdParser.parse(request.verificationId()),
+                normalizedEmail,
+                now,
+                EmailVerificationPurposePolicy.SIGNUP
+        );
 
         // 중복된 정보인지 확인
         validateMemberDuplicates(normalizedEmail, nickname);
@@ -209,14 +216,14 @@ public class AuthService {
         memberAccount.setName(request.name().trim());
         memberAccount.setNickname(nickname);
         memberAccount.setPhone(request.phone());
-        memberAccount.setProfileFileId(request.profileFileId());
+        memberAccount.setProfileFileId(profileFileId);
         memberAccount.setEmailVerificationAt(emailVerification.getVerifiedAt());
 
         MemberAccount savedMemberAccount = memberAccountRepository.save(memberAccount);
 
-        if (request.profileFileId() != null) {
+        if (profileFileId != null) {
             fileService.assignProfileToMember(
-                    request.profileFileId(),
+                    profileFileId,
                     savedMemberAccount.getMemberId(),
                     now
             );
@@ -227,7 +234,7 @@ public class AuthService {
                 .stream()
                 .map(agreement -> TermAgreement.create(
                         savedMemberAccount.getMemberId(),
-                        activeTermsById.get(agreement.termsId()).getTermId(),
+                        activeTermsById.get(parseTermId(agreement.termsId())).getTermId(),
                         agreement.agreed()
                 ))
                 .toList();
@@ -324,7 +331,7 @@ public class AuthService {
 
         // 사용자 동의 약관 Set에 넣기
         for (TermAgreementRequest agreement : requestedAgreements) {
-            if (!requestedTermIds.add(agreement.termsId())) {
+            if (!requestedTermIds.add(parseTermId(agreement.termsId()))) {
                 throw new BusinessException(CustomResponseCode.INVALID_PARAMETER_ERROR, "동일한 약관에 대한 동의 내역이 중복되었습니다.");
             }
         }
@@ -346,7 +353,7 @@ public class AuthService {
 
         for (TermAgreementRequest agreement : requestedAgreements) {
             // 활성화된 약관에서 사용자 선택한 약관을 key로 선택
-            Term term = activeTermsById.get(agreement.termsId());
+            Term term = activeTermsById.get(parseTermId(agreement.termsId()));
 
             // 버전 비교
             if (!term.getTermVersion().equals(agreement.version())) {
@@ -360,5 +367,27 @@ public class AuthService {
         }
 
         return activeTermsById;
+    }
+
+    private Long parseTermId(String termsId) {
+        try {
+            return Long.parseLong(termsId);
+        } catch (NumberFormatException exception) {
+            throw new BusinessException(
+                    CustomResponseCode.INVALID_PARAMETER_ERROR,
+                    "올바르지 않은 약관 식별자입니다."
+            );
+        }
+    }
+
+    private Long parseProfileFileId(String profileFileId) {
+        try {
+            return Long.parseLong(profileFileId);
+        } catch (NumberFormatException exception) {
+            throw new BusinessException(
+                    CustomResponseCode.INVALID_PARAMETER_ERROR,
+                    "올바르지 않은 프로필 파일 식별자입니다."
+            );
+        }
     }
 }
