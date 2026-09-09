@@ -74,7 +74,7 @@ public class VerificationService {
      * @param request 인증 이메일
      * @return EmailVerificationResponse
      */
-    public EmailVerificationResponse sendVerificationCode(EmailVerificationRequest request) {
+    public EmailVerificationResponse sendVerificationCode(EmailVerificationRequest request, EmailVerificationPurposePolicy policy) {
         String email = request.email().trim().toLowerCase(Locale.ROOT);
 
         if (verificationMemberRepository.existsByEmail(email)) {
@@ -104,6 +104,7 @@ public class VerificationService {
         EmailVerification emailVerification = new EmailVerification();
         emailVerification.setVerificationEmail(emailHash);
         emailVerification.setVerificationCode(verificationCodeHash);
+        emailVerification.setPurpose(policy);
         emailVerification.setExpiresAt(now.plusMinutes(VERIFICATION_EXPIRY_MINUTES));
 
         EmailVerification savedEmailVerification = verificationEmailRepository.save(emailVerification);

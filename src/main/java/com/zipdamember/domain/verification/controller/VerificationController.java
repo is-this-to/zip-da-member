@@ -8,6 +8,7 @@ import com.zipdamember.domain.verification.response.EmailVerificationResponse;
 import com.zipdamember.domain.verification.response.RegistrationDuplicateResponse;
 import com.zipdamember.domain.verification.response.VerifyEmailVerificationResponse;
 import com.zipdamember.domain.verification.service.VerificationService;
+import com.zipdamember.domain.verification.util.VerificationIdParser;
 import com.zipdamember.global.config.openapi.CustomApiResponse;
 import com.zipdamember.global.response.GlobalResponseDTO;
 import com.zipdamember.global.response.constant.CustomResponseCode;
@@ -60,7 +61,7 @@ public class VerificationController {
     @PreAuthorize("!isAuthenticated()")
     @PostMapping("/email-verifications")
     public ResponseEntity<GlobalResponseDTO<EmailVerificationResponse>> sendVerificationCode(@Valid @RequestBody EmailVerificationRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(GlobalResponseDTO.success(verificationService.sendVerificationCode(request)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(GlobalResponseDTO.success(verificationService.sendVerificationCode(request, EmailVerificationPurposePolicy.SIGNUP)));
     }
 
     /**
@@ -84,9 +85,15 @@ public class VerificationController {
     @PreAuthorize("!isAuthenticated()")
     @PatchMapping("/email-verifications/{verificationId}")
     public ResponseEntity<GlobalResponseDTO<VerifyEmailVerificationResponse>> verifyVerificationCode(
-            @PathVariable Long verificationId,
+            @PathVariable String verificationId,
             @Valid @RequestBody VerifyEmailVerificationRequest request
     ) {
-        return ResponseEntity.ok(GlobalResponseDTO.success(verificationService.verifyVerificationCode(verificationId, request, EmailVerificationPurposePolicy.SIGNUP)));
+        return ResponseEntity.ok(GlobalResponseDTO.success(
+                verificationService.verifyVerificationCode(
+                        VerificationIdParser.parse(verificationId),
+                        request,
+                        EmailVerificationPurposePolicy.SIGNUP
+                )
+        ));
     }
 }
