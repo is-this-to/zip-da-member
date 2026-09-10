@@ -81,4 +81,8 @@ public class MemberAccount {
             memberId = TsidCreator.getTsid().toLong();
         }
     }
+
+    public void activateAgentRole() {
+        memberRole = MemberRolePolicy.AGENT;
+    }
 }
