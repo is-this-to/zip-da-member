@@ -3,7 +3,7 @@ package com.zipdamember.domain.admin.controller;
 import com.zipdamember.domain.admin.constant.AdminRoleCode;
 import com.zipdamember.domain.admin.request.AdminRoleAssignRequest;
 import com.zipdamember.domain.admin.service.AdminRoleAssignmentService;
-import com.zipdamember.global.openapi.CustomApiResponse;
+import com.zipdamember.global.config.openapi.CustomApiResponse;
 import com.zipdamember.global.response.GlobalResponseDTO;
 import com.zipdamember.global.response.constant.CustomResponseCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,12 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "관리자 계정·권한 API")
 @RestController

@@ -2,7 +2,7 @@ package com.zipdamember.domain.member.repository;
 
 import com.querydsl.core.types.Predicate;
 import com.zipdamember.domain.member.entity.MemberAccount;
-import com.zipdamember.global.jpa.JPAWithDeleted;
+import com.zipdamember.global.config.jpa.JPAWithDeleted;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.querydsl.QuerydslPredicateExecutor;

@@ -73,7 +73,7 @@ spring:
             # 추가적인 보안 인증키 (카카오 내 설정에서 활성화 하지 않은 경우는 생략 가능)
             client-secret: ${KAKAO_CLIENT_SECRET}
             # 카카오 로그인을 마친 후 카카오 인증 서버가 인가 코드 전달 받을 콜백 주소
-            redirect-uri: "{GATEWAY_URI}/api/auth/oauth2/callback/{registrationId}" # user가 설정한 baseUrl로 리다이렉트
+            redirect-uri: "${GATEWAY_URI}/api/auth/oauth2/callback/{registrationId}" # 카카오 개발자 콘솔 Redirect URI와 동일해야 함
             # OAuth2의 가장 대표적인 인증 방식 (인가 코드)
             authorization-grant-type: authorization_code
             # client_id와 secret을 전송할 때, Http Post Body 형태로 데이터를 전송
@@ -175,3 +175,13 @@ external:
     nts:
         business-validation-url: ${NTS_URI}
         api-key: ${NTS_API_KEY}
+
+zipda:
+  oauth2:
+    frontend-callback-uri: ${FRONTEND_CALLBACK_URI}
+    social-signup-cookie-name: social-signup-token
+    social-signup-token-expiry-seconds: 900
+  verification:
+    cleanup:
+      cron: "0 0 18 * * *"
+      zone: "Asia/Seoul"
