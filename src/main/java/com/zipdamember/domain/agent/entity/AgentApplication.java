@@ -108,7 +108,7 @@ public class AgentApplication {
             throw new IllegalArgumentException("보완 요청 사유는 필수입니다.");
         }
         if (supplementDeadline == null || !supplementDeadline.isAfter(LocalDateTime.now())) {
-            throw new IllegalArgumentException("보완 마감일은 현재 이후여야 합니다.");
+            throw new IllegalArgumentException("보완 마감일시는 현재 이후여야 합니다.");
         }
         if (reviewerAdminId == null || reviewerAdminId <= 0) {
             throw new IllegalArgumentException("심사 관리자 아이디는 필수입니다.");
