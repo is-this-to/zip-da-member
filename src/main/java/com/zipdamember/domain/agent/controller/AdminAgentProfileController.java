@@ -8,7 +8,7 @@ import com.zipdamember.domain.agent.response.AdminAgentOperatingStatusListRespon
 import com.zipdamember.domain.agent.response.AdminAgentOperatingStatusResponse;
 import com.zipdamember.domain.agent.response.AdminAgentProfileListResponse;
 import com.zipdamember.domain.agent.service.AgentProfileService;
-import com.zipdamember.global.openapi.CustomApiResponse;
+import com.zipdamember.global.config.openapi.CustomApiResponse;
 import com.zipdamember.global.response.GlobalResponseDTO;
 import com.zipdamember.global.response.constant.CustomResponseCode;
 import io.swagger.v3.oas.annotations.Operation;

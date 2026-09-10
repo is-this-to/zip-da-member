@@ -9,7 +9,7 @@ import com.zipdamember.domain.agent.response.AdminAgentApplicationApproveRespons
 import com.zipdamember.domain.agent.response.AdminAgentApplicationListResponse;
 import com.zipdamember.domain.agent.response.AdminAgentApplicationSupplementResponse;
 import com.zipdamember.domain.agent.service.AdminAgentApplicationService;
-import com.zipdamember.global.openapi.CustomApiResponse;
+import com.zipdamember.global.config.openapi.CustomApiResponse;
 import com.zipdamember.global.response.GlobalResponseDTO;
 import com.zipdamember.global.response.constant.CustomResponseCode;
 import io.swagger.v3.oas.annotations.Operation;
