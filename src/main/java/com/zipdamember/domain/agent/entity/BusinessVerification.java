@@ -79,6 +79,9 @@ public class BusinessVerification {
             LocalDate requestStartDate,
             String requestRepresentativeName,
             VerificationResultStatus resultStatus,
+            String businessStatus,
+            String taxType,
+            LocalDate closedAt,
             LocalDateTime checkedAt
     ) {
         BusinessVerification verification = new BusinessVerification();
@@ -89,6 +92,9 @@ public class BusinessVerification {
         verification.requestStartDate = requestStartDate;
         verification.requestRepresentativeName = requestRepresentativeName;
         verification.resultStatus = resultStatus;
+        verification.businessStatus = businessStatus;
+        verification.taxType = taxType;
+        verification.closedAt = closedAt;
         verification.checkedAt = checkedAt;
         return verification;
     }
