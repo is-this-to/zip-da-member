@@ -9,9 +9,12 @@ public enum AdminAuditAction {
     MEMBER_SUSPEND("회원 정지"),
     MEMBER_SUSPEND_RELEASE("회원 정지 해제"),
     AGENT_DOCUMENT_VIEW("중개사 서류 열람"),
+    AGENT_APPLICATION_UNDER_REVIEW("중개사 신청 심사 대상 전환"),
+    AGENT_APPLICATION_INCORRECT_DATA("중개사 신청 잘못된 자료 처리"),
     AGENT_APPLICATION_SUPPLEMENT_REQUEST("중개사 신청 보완 요청"),
     AGENT_APPLICATION_APPROVE("중개사 신청 승인"),
     AGENT_APPLICATION_REJECT("중개사 신청 반려"),
+    AGENCY_OPERATING_STATUS_CHANGE("중개소 영업 상태 변경"),
     PROPERTY_HIDE_REQUEST("매물 숨김 요청"),
     PROPERTY_RESTORE_REQUEST("매물 복구 요청");
 
