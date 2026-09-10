@@ -6,28 +6,30 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Component
 public class NtsBusinessValidationClient {
-    private static final String BASE_URL = "https://api.odcloud.kr";
-    private static final String VALIDATE_PATH = "/api/nts-businessman/v1/validate";
-
     private final RestClient restClient;
+    private final String businessValidationUrl;
     private final String apiKey;
 
     public NtsBusinessValidationClient(
             RestClient.Builder restClientBuilder,
-            @Value("${NTS_API_KEY:}") String apiKey
+            @Value("${external.nts.base-url:}") String businessValidationUrl,
+            @Value("${external.nts.api-key:}") String apiKey
     ) {
-        this.restClient = restClientBuilder.baseUrl(BASE_URL).build();
+        this.restClient = restClientBuilder.build();
+        this.businessValidationUrl = businessValidationUrl;
         this.apiKey = apiKey;
     }
 
     public boolean isConfigured() {
-        return !apiKey.isBlank();
+        return !businessValidationUrl.isBlank() && !apiKey.isBlank();
     }
 
     public NtsBusinessValidationResult validate(AgentApplication application) {
@@ -37,10 +39,7 @@ public class NtsBusinessValidationClient {
 
         try {
             JsonNode response = restClient.post()
-                    .uri(uriBuilder -> uriBuilder
-                            .path(VALIDATE_PATH)
-                            .queryParam("serviceKey", apiKey)
-                            .build())
+                    .uri(buildRequestUri())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(new NtsBusinessValidationRequest(List.of(
                             new Business(
@@ -63,6 +62,14 @@ public class NtsBusinessValidationClient {
 
     private String normalizeBusinessNumber(String businessNumber) {
         return businessNumber == null ? null : businessNumber.replace("-", "");
+    }
+
+    private URI buildRequestUri() {
+        return UriComponentsBuilder.fromUriString(businessValidationUrl)
+                .queryParam("serviceKey", apiKey)
+                .build()
+                .encode()
+                .toUri();
     }
 
     private record NtsBusinessValidationRequest(List<Business> businesses) {

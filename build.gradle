@@ -68,6 +68,9 @@ dependencies {
 
     // email 발송
     implementation 'org.springframework.boot:spring-boot-starter-mail'
+    
+    // 외부 API REST 호출
+    implementation 'org.springframework.boot:spring-boot-starter-restclient'
 }
 
 tasks.named('test') {
