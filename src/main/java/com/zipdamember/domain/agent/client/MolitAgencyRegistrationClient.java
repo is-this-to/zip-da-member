@@ -5,26 +5,31 @@ import com.zipdamember.domain.agent.entity.AgentApplication;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.util.UriBuilder;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.net.URI;
 
 @Component
 public class MolitAgencyRegistrationClient {
-    private static final String BASE_URL = "https://api.vworld.kr";
-    private static final String OFFICE_INFO_PATH = "/ned/data/getEBOfficeInfo";
-
     private final RestClient restClient;
+    private final String officeInfoUrl;
     private final String apiKey;
+    private final String domain;
 
     public MolitAgencyRegistrationClient(
             RestClient.Builder restClientBuilder,
-            @Value("${MOLIT_API_KEY:}") String apiKey
+            @Value("${external.molit.base-url:}") String officeInfoUrl,
+            @Value("${external.molit.api-key:}") String apiKey,
+            @Value("${external.molit.domain:}") String domain
     ) {
-        this.restClient = restClientBuilder.baseUrl(BASE_URL).build();
+        this.restClient = restClientBuilder.build();
+        this.officeInfoUrl = officeInfoUrl;
         this.apiKey = apiKey;
+        this.domain = domain;
     }
 
     public boolean isConfigured() {
-        return !apiKey.isBlank();
+        return hasText(officeInfoUrl) && hasText(apiKey) && hasText(domain);
     }
 
     public MolitAgencyRegistrationResult validate(AgentApplication application) {
@@ -34,7 +39,7 @@ public class MolitAgencyRegistrationClient {
 
         try {
             JsonNode response = restClient.get()
-                    .uri(uriBuilder -> buildRequestUri(uriBuilder, application))
+                    .uri(buildRequestUri(application))
                     .retrieve()
                     .body(JsonNode.class);
 
@@ -44,9 +49,10 @@ public class MolitAgencyRegistrationClient {
         }
     }
 
-    private java.net.URI buildRequestUri(UriBuilder uriBuilder, AgentApplication application) {
-        uriBuilder.path(OFFICE_INFO_PATH)
+    private URI buildRequestUri(AgentApplication application) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(officeInfoUrl)
                 .queryParam("key", apiKey)
+                .queryParam("domain", domain)
                 .queryParam("jurirno", application.getRequestAgencyRegistrationNo())
                 .queryParam("format", "json")
                 .queryParam("numOfRows", 1)
@@ -58,7 +64,7 @@ public class MolitAgencyRegistrationClient {
         if (hasText(application.getRequestRepresentativeName())) {
             uriBuilder.queryParam("brkrNm", application.getRequestRepresentativeName());
         }
-        return uriBuilder.build();
+        return uriBuilder.build().encode().toUri();
     }
 
     private MolitAgencyRegistrationResult parseResponse(
