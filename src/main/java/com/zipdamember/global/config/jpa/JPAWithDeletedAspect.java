@@ -1,4 +1,4 @@
-package com.zipdamember.global.jpa;
+package com.zipdamember.global.config.jpa;
 
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,9 @@ public class JPAWithDeletedAspect {
         String filterName = jpaWithDeleted.filterName();
 
         // 핵심 비지니스 로직 호출 전 JPA의 필터 상태를 기록
-        // getEnabledFilter: 해당 session에서 우리가 찾는 filter를 찾고 있으면 true, 없으면 null return
+        // getEnabledFilter: 해당 session에서 filter name을 기반으로 filter 찾기
+        //      -> 있으면 true
+        //      -> 없으면 false
         boolean wasEnabled = session.getEnabledFilter(filterName) != null;
 
         try {
