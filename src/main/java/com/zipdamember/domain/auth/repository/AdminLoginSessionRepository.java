@@ -5,6 +5,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface AdminLoginSessionRepository extends JpaRepository<AdminLoginSession, Long> {
@@ -13,4 +14,6 @@ public interface AdminLoginSessionRepository extends JpaRepository<AdminLoginSes
     Optional<AdminLoginSession> findByRefreshToken(String refreshToken);
 
     long deleteAllByAdminId(Long adminId);
+
+    List<AdminLoginSession> findAllByAdminIdAndRevokedAtIsNull(Long adminId);
 }

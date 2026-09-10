@@ -16,10 +16,10 @@ public record AdminAuthResponse(
         @Schema(description = "최초 로그인 비밀번호 변경 필요 여부")
         boolean passwordChangeRequired,
 
-        @Schema(description = "관리자 Access Token")
+        @Schema(description = "관리자 Access Token. 최초 로그인 비밀번호 변경 대상은 발급하지 않음", nullable = true)
         String accessToken,
 
-        @Schema(description = "Access Token 만료 시각")
+        @Schema(description = "Access Token 만료 시각. 최초 로그인 비밀번호 변경 대상은 없음", nullable = true)
         OffsetDateTime accessTokenExpiresAt
 ) {
     public AdminAuthResponse {
