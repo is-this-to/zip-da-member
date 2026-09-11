@@ -33,6 +33,7 @@ import com.zipdamember.domain.agent.response.AdminAgentApplicationListResponse;
 import com.zipdamember.domain.agent.response.AdminAgentApplicationSupplementResponse;
 import com.zipdamember.domain.agent.response.AdminBusinessVerificationResponse;
 import com.zipdamember.domain.member.repository.MemberAccountRepository;
+import com.zipdamember.domain.file.service.FileService;
 import com.zipdamember.domain.member.constant.MemberStatus;
 import com.zipdamember.global.security.constant.MemberRolePolicy;
 import com.zipdamember.global.error.custom.BusinessException;
@@ -60,6 +61,7 @@ public class AdminAgentApplicationService {
     private final AdminAuditLogService adminAuditLogService;
     private final NtsBusinessValidationClient ntsBusinessValidationClient;
     private final MolitAgencyRegistrationClient molitAgencyRegistrationClient;
+    private final FileService fileService;
 
     @Transactional(readOnly = true)
     public AdminAgentApplicationListResponse search(AdminAgentApplicationSearchRequest request) {
@@ -103,7 +105,10 @@ public class AdminAgentApplicationService {
         var documents = agentApplicationDocumentRepository
                 .findAllByApplicationIdOrderByUploadedAtDescDocumentIdDesc(applicationId)
                 .stream()
-                .map(AdminAgentApplicationDocumentResponse::from)
+                .map(document -> AdminAgentApplicationDocumentResponse.of(
+                        document,
+                        fileService.createPrivateDownloadUrl(document.getFileId())
+                ))
                 .toList();
 
         // 신청 상세 응답
@@ -347,7 +352,7 @@ public class AdminAgentApplicationService {
 
         // 대기 신청 검증 대상 조회
         List<AgentApplication> applications = agentApplicationRepository
-                .findTop100ByStatusOrderBySubmittedAtAscApplicationIdAsc(AgentApplicationStatus.PENDING);
+                .findTop100ByStatusAndSubmittedAtIsNotNullOrderBySubmittedAtAscApplicationIdAsc(AgentApplicationStatus.PENDING);
 
         // 대기 신청 검증 처리
         for (AgentApplication application : applications) {

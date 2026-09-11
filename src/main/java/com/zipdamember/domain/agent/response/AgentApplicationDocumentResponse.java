@@ -4,14 +4,13 @@ import com.zipdamember.domain.agent.constant.AgentApplicationDocumentType;
 import com.zipdamember.domain.agent.constant.DocumentOcrStatus;
 import com.zipdamember.domain.agent.entity.AgentApplicationDocument;
 
-import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
-public record AdminAgentApplicationDocumentResponse(
+public record AgentApplicationDocumentResponse(
         String documentId,
+        String fileId,
         AgentApplicationDocumentType documentType,
-        LocalDateTime uploadedAt,
-        LocalDateTime verifiedAt,
         DocumentOcrStatus ocrStatus,
         String ocrText,
         String businessRegistrationNo,
@@ -19,18 +18,18 @@ public record AdminAgentApplicationDocumentResponse(
         String representativeName,
         String agentRegistrationNo,
         String agencyName,
-        String ocrFailureReason,
-        String downloadUrl
+        String failureReason,
+        String downloadUrl,
+        LocalDateTime uploadedAt
 ) {
-    public static AdminAgentApplicationDocumentResponse of(
+    public static AgentApplicationDocumentResponse of(
             AgentApplicationDocument document,
             String downloadUrl
     ) {
-        return new AdminAgentApplicationDocumentResponse(
+        return new AgentApplicationDocumentResponse(
                 document.getDocumentId().toString(),
+                document.getFileId().toString(),
                 document.getDocumentType(),
-                document.getUploadedAt(),
-                document.getVerifiedAt(),
                 document.getOcrStatus(),
                 document.getOcrText(),
                 document.getOcrBusinessNo(),
@@ -39,7 +38,8 @@ public record AdminAgentApplicationDocumentResponse(
                 document.getOcrAgentRegistrationNo(),
                 document.getOcrAgencyName(),
                 document.getOcrFailureReason(),
-                downloadUrl
+                downloadUrl,
+                document.getUploadedAt()
         );
     }
 }
