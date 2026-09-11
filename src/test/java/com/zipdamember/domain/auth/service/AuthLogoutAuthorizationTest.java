@@ -30,7 +30,9 @@ class AuthLogoutAuthorizationTest {
     @EnableMethodSecurity
     static class Config {
         @Bean AuthService authService() { return mock(AuthService.class); }
-        @Bean AuthController authController(AuthService service) { return new AuthController(service); }
+        @Bean AuthController authController(AuthService service) {
+            return new AuthController(service, mock(SocialAuthService.class));
+        }
     }
 
     @BeforeEach

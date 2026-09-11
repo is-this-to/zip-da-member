@@ -4,6 +4,7 @@ import com.zipdamember.domain.member.entity.MemberAccount;
 import com.zipdamember.global.error.custom.business.InvalidTokenException;
 import com.zipdamember.global.jwt.request.AdminTokenGenerateRequest;
 import io.jsonwebtoken.*;
+import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
@@ -20,7 +21,15 @@ public class JwtProvider {
 
     public JwtProvider(JwtConfig jwtConfig) {
         this.jwtConfig = jwtConfig;
-        this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtConfig.secret()));
+        this.secretKey = Keys.hmacShaKeyFor(decodeSecret(jwtConfig.secret()));
+    }
+
+    private byte[] decodeSecret(String secret) {
+        try {
+            return Decoders.BASE64.decode(secret);
+        } catch (DecodingException e) {
+            return Decoders.BASE64URL.decode(secret);
+        }
     }
 
     // ADMIN 토큰 관련

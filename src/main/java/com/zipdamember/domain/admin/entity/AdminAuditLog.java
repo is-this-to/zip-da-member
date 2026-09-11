@@ -1,7 +1,7 @@
 package com.zipdamember.domain.admin.entity;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.zipdamember.domain.admin.constant.AdminAuditActorType;
+import com.zipdamember.domain.admin.constant.AdminAuditAction;
 import com.zipdamember.domain.admin.constant.AdminAuditResult;
 import com.zipdamember.domain.admin.constant.AdminAuditTargetService;
 import com.zipdamember.domain.admin.constant.AdminRoleCode;
@@ -9,8 +9,6 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -44,8 +42,9 @@ public class AdminAuditLog {
     @Column(name = "role_code", length = 30)
     private AdminRoleCode roleCode;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "action", nullable = false, length = 80)
-    private String action;
+    private AdminAuditAction action;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "target_service", length = 30)
@@ -59,14 +58,6 @@ public class AdminAuditLog {
 
     @Column(name = "reason", nullable = false, length = 500)
     private String reason;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "before_data", columnDefinition = "JSON")
-    private JsonNode beforeData;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "after_data", columnDefinition = "JSON")
-    private JsonNode afterData;
 
     @Column(name = "ip_address", length = 45)
     private String ipAddress;
@@ -90,4 +81,35 @@ public class AdminAuditLog {
     @CreatedDate
     @Column(name = "occurred_at", nullable = false, updatable = false)
     private LocalDateTime occurredAt;
+
+    public static AdminAuditLog create(
+            Long adminId,
+            AdminAuditActorType actorType,
+            AdminRoleCode roleCode,
+            AdminAuditAction action,
+            AdminAuditTargetService targetService,
+            String targetType,
+            String targetId,
+            String reason,
+            String ipAddress,
+            String userAgent,
+            String requestId,
+            AdminAuditResult result
+    ) {
+        AdminAuditLog auditLog = new AdminAuditLog();
+        auditLog.adminId = adminId;
+        auditLog.actorType = actorType;
+        auditLog.roleCode = roleCode;
+        auditLog.action = action;
+        auditLog.targetService = targetService;
+        auditLog.targetType = targetType;
+        auditLog.targetId = targetId;
+        auditLog.reason = reason;
+        auditLog.ipAddress = ipAddress;
+        auditLog.userAgent = userAgent;
+        auditLog.requestId = requestId;
+        auditLog.result = result;
+        return auditLog;
+    }
+
 }
