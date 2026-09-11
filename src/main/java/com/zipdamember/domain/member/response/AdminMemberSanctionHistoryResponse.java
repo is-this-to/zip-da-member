@@ -16,7 +16,7 @@ public record AdminMemberSanctionHistoryResponse(
     }
 
     public record History(
-            Long sanctionId,
+            String sanctionId,
             String historyType,
             MemberStatus beforeStatus,
             MemberStatus afterStatus,

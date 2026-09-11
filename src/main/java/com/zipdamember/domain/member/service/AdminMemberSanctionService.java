@@ -283,7 +283,7 @@ public class AdminMemberSanctionService {
     ) {
         // 제재 이력 응답 생성
         return new AdminMemberSanctionHistoryResponse.History(
-                source.sanctionId(),
+                source.sanctionId().toString(),
                 "SANCTION",
                 beforeStatus(source, statusChange, MemberStatus.ACTIVE),
                 afterStatus(source, statusChange, MemberStatus.SUSPENDED),
@@ -308,7 +308,7 @@ public class AdminMemberSanctionService {
     ) {
         // 제재 해제 이력 응답 생성
         return new AdminMemberSanctionHistoryResponse.History(
-                source.sanctionId(),
+                source.sanctionId().toString(),
                 "RELEASE",
                 beforeStatus(source, statusChange, null),
                 afterStatus(source, statusChange, null),

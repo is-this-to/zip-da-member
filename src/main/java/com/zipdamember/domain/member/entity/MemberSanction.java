@@ -50,15 +50,15 @@ public class MemberSanction {
 
     @Column(name = "end_at", updatable = false)
     private LocalDateTime endAt;
-
-    @Column(name = "admin_id", nullable = false, updatable = false, columnDefinition = "BIGINT UNSIGNED")
-    private Long adminId;
-
+    
     @Column(name = "released_at")
     private LocalDateTime releasedAt;
 
     @Column(name = "admin_released_by", columnDefinition = "BIGINT UNSIGNED")
     private Long adminReleasedBy;
+
+    @Column(name = "admin_id", nullable = false, updatable = false, columnDefinition = "BIGINT UNSIGNED")
+    private Long adminId;
 
     public static MemberSanction create(
             Long memberId,
