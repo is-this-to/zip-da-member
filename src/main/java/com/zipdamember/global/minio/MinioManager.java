@@ -3,8 +3,10 @@ package com.zipdamember.global.minio;
 import com.zipdamember.global.config.minio.MinioConfig;
 import com.zipdamember.global.error.custom.business.FileManagedException;
 import io.minio.MinioClient;
+import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -49,6 +51,18 @@ public class MinioManager {
 
         if (objectKey.startsWith("../") || objectKey.length() > 255) {
             throw new FileManagedException("파일 저장 경로가 올바르지 않습니다.");
+        }
+        return objectKey;
+    }
+
+    public String generateDocumentObjectKey(String extension) {
+        String fileName = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
+                + "_" + UUID.randomUUID() + "." + extension;
+        Path path = Path.of(minioConfig.minioDocumentPath(), fileName).normalize();
+        String objectKey = path.toString().replace(File.separatorChar, '/');
+
+        if (objectKey.startsWith("../") || objectKey.length() > 255) {
+            throw new FileManagedException("문서 저장 경로가 올바르지 않습니다.");
         }
         return objectKey;
     }
@@ -124,6 +138,21 @@ public class MinioManager {
         String endpoint = minioConfig.minioEndpoint().replaceAll("/+$", "");
         Path objectPath = Path.of(minioConfig.minioBucket(), objectKey);
         return endpoint + "/" + objectPath.toString().replace(File.separatorChar, '/');
+    }
+
+    public String createPresignedGetUrl(String objectKey, int expirySeconds) {
+        try {
+            return minioClient.getPresignedObjectUrl(
+                    GetPresignedObjectUrlArgs.builder()
+                            .method(Method.GET)
+                            .bucket(minioConfig.minioBucket())
+                            .object(objectKey)
+                            .expiry(expirySeconds)
+                            .build()
+            );
+        } catch (Exception exception) {
+            throw new FileManagedException("비공개 파일 열람 주소 생성에 실패했습니다.", exception);
+        }
     }
 
     public void deleteFileQuietly(String objectKey) {

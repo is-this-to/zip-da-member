@@ -117,6 +117,34 @@ public class FileObject {
         return fileObject;
     }
 
+    public static FileObject createOwnedPrivateDocument(
+            Long ownerMemberId,
+            FileCategory category,
+            String storageKey,
+            String fileUri,
+            String contentType,
+            long sizeBytes,
+            String checksum
+    ) {
+        if (category != FileCategory.BUSINESS_LICENSE
+                && category != FileCategory.AGENT_CERTIFICATE) {
+            throw new IllegalArgumentException("중개사 신청 서류 카테고리가 아닙니다.");
+        }
+
+        FileObject fileObject = new FileObject(
+                category,
+                storageKey,
+                fileUri,
+                FileVisibility.PRIVATE,
+                contentType,
+                sizeBytes,
+                checksum,
+                null
+        );
+        fileObject.ownerMemberId = ownerMemberId;
+        return fileObject;
+    }
+
     public boolean isExpired(LocalDateTime now) {
         return expiresAt != null && !expiresAt.isAfter(now);
     }
