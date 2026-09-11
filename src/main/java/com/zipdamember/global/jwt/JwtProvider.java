@@ -4,7 +4,6 @@ import com.zipdamember.domain.member.entity.MemberAccount;
 import com.zipdamember.global.error.custom.business.InvalidTokenException;
 import com.zipdamember.global.jwt.request.AdminTokenGenerateRequest;
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
@@ -21,15 +20,7 @@ public class JwtProvider {
 
     public JwtProvider(JwtConfig jwtConfig) {
         this.jwtConfig = jwtConfig;
-        this.secretKey = Keys.hmacShaKeyFor(decodeSecret(jwtConfig.secret()));
-    }
-
-    private byte[] decodeSecret(String secret) {
-        try {
-            return Decoders.BASE64.decode(secret);
-        } catch (DecodingException e) {
-            return Decoders.BASE64URL.decode(secret);
-        }
+        this.secretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtConfig.secret()));
     }
 
     // ADMIN 토큰 관련
@@ -76,14 +67,14 @@ public class JwtProvider {
 
     // MEMBER 토큰 관련
     public String generateAccessToken(MemberAccount member) {
-        return this.generateToken(member, jwtConfig.accessTokenExpiryMs(), "ACCESS");
+        return this.generateToken(member, jwtConfig.accessTokenExpiryMs());
     }
 
     public String generateRefreshToken(MemberAccount member) {
-        return this.generateToken(member, jwtConfig.refreshTokenExpiryMs(), "REFRESH");
+        return this.generateToken(member, jwtConfig.refreshTokenCookieMaxAgeSeconds());
     }
 
-    private String generateToken(MemberAccount member, int expiry, String tokenType) {
+    private String generateToken(MemberAccount member, int expiry) {
         Date now = new Date();
 
         return Jwts.builder()
@@ -94,8 +85,6 @@ public class JwtProvider {
             .issuer(jwtConfig.issuer()) // 토큰 발급자 셋팅
             .issuedAt(now) // 토급 발급시간 설정
             .expiration(new Date(now.getTime() + expiry)) // 토큰 만료 시간 설정
-            .claim("type", "MEMBER")
-            .claim("tokenType", tokenType)
             .claim("role", member.getMemberRole()) // Private Claim 설정
             .signWith(secretKey) // 시그니쳐 작성
             .compact();

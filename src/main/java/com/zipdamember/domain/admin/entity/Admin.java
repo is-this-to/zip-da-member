@@ -75,28 +75,6 @@ public class Admin {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    public static Admin create(
-            String adminCode,
-            String adminPassword,
-            String adminName
-    ) {
-        Admin admin = new Admin();
-        admin.adminCode = adminCode;
-        admin.adminPassword = adminPassword;
-        admin.passwordChangeRequired = true;
-        admin.adminName = adminName;
-        return admin;
-    }
-
-    public void changePassword(String encodedPassword) {
-        if (encodedPassword == null || encodedPassword.isBlank()) {
-            throw new IllegalArgumentException("암호화된 관리자 비밀번호는 필수입니다.");
-        }
-
-        this.adminPassword = encodedPassword;
-        this.passwordChangeRequired = false;
-    }
-
     @PrePersist
     private void generateAdminId() {
         if (adminId == null) {
