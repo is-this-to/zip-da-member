@@ -372,6 +372,9 @@ public class AdminAgentApplicationService {
                 application.getRequestStartDate(),
                 application.getRequestRepresentativeName(),
                 businessResult.resultStatus(),
+                businessResult.businessStatus(),
+                businessResult.taxType(),
+                businessResult.closedAt(),
                 checkedAt
         ));
 
@@ -388,59 +391,10 @@ public class AdminAgentApplicationService {
                 checkedAt
         ));
 
-        // 신청 상태 변경 전 값 보관
-        AgentApplicationStatus previousStatus = application.getStatus();
-
         // 신청 상태 검증 결과 반영
-        AgentApplicationStatus changedStatus = application.applyVerificationResults(
+        application.applyVerificationResults(
                 businessResult.resultStatus(),
                 agencyRegistrationResult.resultStatus()
         );
-
-        // 상태 변경 감사 로그 저장
-        if (previousStatus != changedStatus) {
-            recordVerificationStateChange(application, previousStatus, changedStatus);
-        }
-    }
-
-    private void recordVerificationStateChange(
-            AgentApplication application,
-            AgentApplicationStatus previousStatus,
-            AgentApplicationStatus changedStatus
-    ) {
-        // 검증 결과 감사 로그 저장
-        adminAuditLogService.recordSuccess(new AdminAuditLogWriteRequest(
-                null,
-                AdminAuditActorType.SYSTEM,
-                null,
-                resolveVerificationAction(changedStatus),
-                AdminAuditTargetService.MEMBER,
-                "AGENT_APPLICATION",
-                application.getApplicationId().toString(),
-                resolveVerificationReason(changedStatus),
-                null,
-                null,
-                List.of(new AdminAuditLogWriteRequest.Change(
-                        "status",
-                        previousStatus.name(),
-                        changedStatus.name(),
-                        AdminAuditValueType.ENUM,
-                        0
-                ))
-        ));
-    }
-
-    private AdminAuditAction resolveVerificationAction(AgentApplicationStatus changedStatus) {
-        // 검증 상태 감사 행위 결정
-        return changedStatus == AgentApplicationStatus.UNDER_REVIEW
-                ? AdminAuditAction.AGENT_APPLICATION_UNDER_REVIEW
-                : AdminAuditAction.AGENT_APPLICATION_INCORRECT_DATA;
-    }
-
-    private String resolveVerificationReason(AgentApplicationStatus changedStatus) {
-        // 검증 상태 감사 사유 결정
-        return changedStatus == AgentApplicationStatus.UNDER_REVIEW
-                ? "국세청·국토교통부 API 검증 일치"
-                : "국세청 또는 국토교통부 API 검증 불일치";
     }
 }
