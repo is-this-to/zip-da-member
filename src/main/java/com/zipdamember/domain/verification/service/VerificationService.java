@@ -77,7 +77,8 @@ public class VerificationService {
     public EmailVerificationResponse sendVerificationCode(EmailVerificationRequest request, EmailVerificationPurposePolicy policy) {
         String email = request.email().trim().toLowerCase(Locale.ROOT);
 
-        if (verificationMemberRepository.existsByEmail(email)) {
+        if (policy == EmailVerificationPurposePolicy.SIGNUP
+                && verificationMemberRepository.existsByEmail(email)) {
             throw new AlreadyRegisteredException(
                     "이미 가입된 이메일입니다."
             );
@@ -90,7 +91,7 @@ public class VerificationService {
         // 인증 이메일이 일치하고 인증 목적이 일치하며 만료 시각이 기준 시각보다 뒤인 데이터가 존재?
         boolean recentlySent = verificationEmailRepository.existsByVerificationEmailAndPurposeAndCreatedAtAfter(
                         emailHash,
-                        EmailVerificationPurposePolicy.SIGNUP,
+                        policy,
                         resendBoundary
                 );
 
@@ -110,7 +111,11 @@ public class VerificationService {
         EmailVerification savedEmailVerification = verificationEmailRepository.save(emailVerification);
 
         try {
-            emailSender.sendVerificationCode(email, verificationCode);
+            if (policy == EmailVerificationPurposePolicy.PASSWORD_RESET) {
+                emailSender.sendPasswordVerificationCode(email, verificationCode);
+            } else {
+                emailSender.sendVerificationCode(email, verificationCode);
+            }
         } catch (BusinessException exception) {
             verificationEmailRepository.deleteById(savedEmailVerification.getVerificationId());
             throw exception;
