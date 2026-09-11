@@ -177,6 +177,41 @@ public class FileService {
         }
     }
 
+    @Transactional
+    public FileUploadResponse uploadOwnedProfile(MultipartFile file, Long memberId, FileCategory category) {
+        String objectKey = minioManager.generateProfileObjectKey(file);
+        String fileUri = minioManager.createObjectUri(objectKey);
+        String checksum = minioManager.calculateChecksum(file);
+        minioManager.uploadFile(objectKey, file);
+        try {
+            FileObject fileObject = FileObject.createOwnedPublicImage(
+                    memberId, category, objectKey, fileUri,
+                    file.getContentType(), file.getSize(), checksum
+            );
+            return FileUploadResponse.from(fileObjectRepository.saveAndFlush(fileObject));
+        } catch (RuntimeException exception) {
+            minioManager.deleteFileQuietly(objectKey);
+            throw exception;
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void validateOwnedProfile(Long fileId, Long memberId, FileCategory category) {
+        FileObject file = fileObjectRepository.findById(fileId)
+                .orElseThrow(() -> new FileManagedException("프로필 파일을 찾을 수 없습니다."));
+        if (!memberId.equals(file.getOwnerMemberId()) || file.getCategory() != category) {
+            throw new FileManagedException("본인이 업로드한 올바른 프로필 파일이 아닙니다.");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public String getPublicFileUri(Long fileId) {
+        if (fileId == null) return null;
+        return fileObjectRepository.findById(fileId)
+                .map(FileObject::getFileUri)
+                .orElse(null);
+    }
+
     public ValidatedDocument prepareAgentDocument(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new FileManagedException("업로드할 신청 서류가 없습니다.");
