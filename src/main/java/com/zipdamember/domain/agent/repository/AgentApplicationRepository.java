@@ -14,7 +14,23 @@ public interface AgentApplicationRepository extends JpaRepository<AgentApplicati
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<AgentApplication> findByApplicationId(Long applicationId);
 
-    List<AgentApplication> findTop100ByStatusOrderBySubmittedAtAscApplicationIdAsc(
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<AgentApplication> findByApplicationIdAndMemberId(Long applicationId, Long memberId);
+
+    Optional<AgentApplication> findTopByMemberIdOrderByCreatedAtDescApplicationIdDesc(Long memberId);
+
+    List<AgentApplication> findTop100ByStatusAndSubmittedAtIsNotNullOrderBySubmittedAtAscApplicationIdAsc(
             AgentApplicationStatus status
+    );
+    boolean existsByRequestBusinessNoAndApplicationIdNotAndSubmittedAtIsNotNullAndStatusIn(
+            String requestBusinessNo,
+            Long applicationId,
+            List<AgentApplicationStatus> statuses
+    );
+
+    boolean existsByRequestAgencyRegistrationNoAndApplicationIdNotAndSubmittedAtIsNotNullAndStatusIn(
+            String requestAgencyRegistrationNo,
+            Long applicationId,
+            List<AgentApplicationStatus> statuses
     );
 }

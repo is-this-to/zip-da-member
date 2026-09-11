@@ -23,4 +23,6 @@ public interface AgentProfileRepository extends Repository<AgentProfile, Long>,
 
     boolean existsByBusinessRegistrationNo(String businessRegistrationNo);
 
+    boolean existsByMemberId(Long memberId);
+
 }

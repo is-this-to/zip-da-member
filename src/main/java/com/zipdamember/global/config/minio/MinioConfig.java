@@ -11,6 +11,7 @@ public record MinioConfig(
         String minioAccessKey,
         String minioSecretKey,
         String minioProfilePath,
+        String minioDocumentPath,
         List<String> allowImageExtensions
 ) {
 }

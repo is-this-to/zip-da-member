@@ -1,8 +1,8 @@
 package com.zipdamember.domain.file.service;
 
 import com.zipdamember.domain.file.constant.FileCategory;
-import com.zipdamember.domain.file.constant.FileVisibility;
 import com.zipdamember.domain.file.entity.FileObject;
+import com.zipdamember.domain.file.constant.FileVisibility;
 import com.zipdamember.domain.file.repository.FileObjectRepository;
 import com.zipdamember.domain.file.response.FileUploadResponse;
 import com.zipdamember.global.error.custom.business.FileManagedException;
@@ -23,6 +23,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Arrays;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +38,15 @@ public class FileService {
             "image/png", "png",
             "image/gif", "gif",
             "image/webp", "webp"
+    );
+
+    private static final int MAX_AGENT_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
+    private static final int PRIVATE_URL_EXPIRY_SECONDS = 300;
+    private static final Map<String, String> AGENT_DOCUMENT_EXTENSIONS = Map.of(
+            "application/pdf", "pdf",
+            "image/jpeg", "jpg",
+            "image/jpg", "jpg",
+            "image/png", "png"
     );
 
     private final MinioManager minioManager;
@@ -168,29 +178,15 @@ public class FileService {
     }
 
     @Transactional
-    public FileUploadResponse uploadOwnedProfile(
-            MultipartFile file,
-            Long memberId,
-            FileCategory category
-    ) {
-        if (category != FileCategory.PROFILE && category != FileCategory.AGENT_PROFILE) {
-            throw new FileManagedException("공개 프로필 이미지 카테고리가 아닙니다.");
-        }
-
+    public FileUploadResponse uploadOwnedProfile(MultipartFile file, Long memberId, FileCategory category) {
         String objectKey = minioManager.generateProfileObjectKey(file);
         String fileUri = minioManager.createObjectUri(objectKey);
         String checksum = minioManager.calculateChecksum(file);
         minioManager.uploadFile(objectKey, file);
-
         try {
             FileObject fileObject = FileObject.createOwnedPublicImage(
-                    memberId,
-                    category,
-                    objectKey,
-                    fileUri,
-                    file.getContentType(),
-                    file.getSize(),
-                    checksum
+                    memberId, category, objectKey, fileUri,
+                    file.getContentType(), file.getSize(), checksum
             );
             return FileUploadResponse.from(fileObjectRepository.saveAndFlush(fileObject));
         } catch (RuntimeException exception) {
@@ -202,9 +198,9 @@ public class FileService {
     @Transactional(readOnly = true)
     public void validateOwnedProfile(Long fileId, Long memberId, FileCategory category) {
         FileObject file = fileObjectRepository.findById(fileId)
-                .orElseThrow(() -> new FileManagedException("프로필 파일 정보를 찾을 수 없습니다."));
+                .orElseThrow(() -> new FileManagedException("프로필 파일을 찾을 수 없습니다."));
         if (!memberId.equals(file.getOwnerMemberId()) || file.getCategory() != category) {
-            throw new FileManagedException("본인이 해당 용도로 업로드한 프로필 파일이 아닙니다.");
+            throw new FileManagedException("본인이 업로드한 올바른 프로필 파일이 아닙니다.");
         }
     }
 
@@ -212,9 +208,102 @@ public class FileService {
     public String getPublicFileUri(Long fileId) {
         if (fileId == null) return null;
         return fileObjectRepository.findById(fileId)
-                .filter(file -> file.getVisibility() == FileVisibility.PUBLIC)
                 .map(FileObject::getFileUri)
                 .orElse(null);
+    }
+
+    public ValidatedDocument prepareAgentDocument(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new FileManagedException("업로드할 신청 서류가 없습니다.");
+        }
+        if (file.getSize() > MAX_AGENT_DOCUMENT_SIZE_BYTES) {
+            throw new FileManagedException("신청 서류는 10MB 이하만 업로드할 수 있습니다.");
+        }
+
+        String contentType = file.getContentType() == null
+                ? ""
+                : file.getContentType().split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
+        String extension = AGENT_DOCUMENT_EXTENSIONS.get(contentType);
+        if (extension == null) {
+            throw new FileManagedException("신청 서류는 PDF, JPG, PNG 형식만 업로드할 수 있습니다.");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.contains(".")) {
+            throw new FileManagedException("신청 서류의 파일 확장자를 확인할 수 없습니다.");
+        }
+        String requestedExtension = originalFilename
+                .substring(originalFilename.lastIndexOf('.') + 1)
+                .toLowerCase(Locale.ROOT);
+        if (!(requestedExtension.equals(extension)
+                || ("jpg".equals(extension) && "jpeg".equals(requestedExtension)))) {
+            throw new FileManagedException("신청 서류의 확장자와 Content-Type이 일치하지 않습니다.");
+        }
+
+        try {
+            byte[] content = file.getBytes();
+            if (!hasExpectedSignature(contentType, content)) {
+                throw new FileManagedException("신청 서류의 실제 파일 형식이 올바르지 않습니다.");
+            }
+            return new ValidatedDocument(content, contentType, extension);
+        } catch (FileManagedException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new FileManagedException("신청 서류를 읽을 수 없습니다.", exception);
+        }
+    }
+
+    @Transactional
+    public FileObject storePrivateAgentDocument(
+            ValidatedDocument document,
+            Long ownerMemberId,
+            FileCategory category
+    ) {
+        String objectKey = minioManager.generateDocumentObjectKey(document.extension());
+        minioManager.uploadFile(objectKey, document.content(), document.contentType());
+
+        try {
+            FileObject fileObject = FileObject.createOwnedPrivateDocument(
+                    ownerMemberId,
+                    category,
+                    objectKey,
+                    minioManager.createObjectUri(objectKey),
+                    document.contentType(),
+                    document.content().length,
+                    minioManager.calculateChecksum(document.content())
+            );
+            return fileObjectRepository.saveAndFlush(fileObject);
+        } catch (RuntimeException exception) {
+            minioManager.deleteFileQuietly(objectKey);
+            throw exception;
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public String createPrivateDownloadUrl(Long fileId) {
+        FileObject file = fileObjectRepository.findById(fileId)
+                .orElseThrow(() -> new FileManagedException("신청 서류 파일을 찾을 수 없습니다."));
+        if (file.getVisibility() != FileVisibility.PRIVATE) {
+            throw new FileManagedException("비공개 파일이 아닙니다.");
+        }
+        return minioManager.createPresignedGetUrl(file.getStorageKey(), PRIVATE_URL_EXPIRY_SECONDS);
+    }
+
+    private boolean hasExpectedSignature(String contentType, byte[] content) {
+        if ("application/pdf".equals(contentType)) {
+            return startsWith(content, new byte[]{'%', 'P', 'D', 'F', '-'});
+        }
+        if ("image/png".equals(contentType)) {
+            return startsWith(content, new byte[]{
+                    (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+            });
+        }
+        return startsWith(content, new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF});
+    }
+
+    private boolean startsWith(byte[] content, byte[] signature) {
+        return content.length >= signature.length
+                && Arrays.equals(Arrays.copyOf(content, signature.length), signature);
     }
 
     private void validateKakaoProfileUri(URI uri) {
