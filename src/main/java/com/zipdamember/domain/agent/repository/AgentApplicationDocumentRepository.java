@@ -5,6 +5,7 @@ import com.zipdamember.domain.agent.constant.AgentApplicationDocumentType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface AgentApplicationDocumentRepository
         extends JpaRepository<AgentApplicationDocument, Long> {
@@ -16,5 +17,15 @@ public interface AgentApplicationDocumentRepository
     boolean existsByApplicationIdAndDocumentType(
             Long applicationId,
             AgentApplicationDocumentType documentType
+    );
+
+    Optional<AgentApplicationDocument>
+    findTopByApplicationIdAndDocumentTypeOrderByUploadedAtDescDocumentIdDesc(
+            Long applicationId,
+            AgentApplicationDocumentType documentType
+    );
+
+    Optional<AgentApplicationDocument> findByDocumentIdAndApplicationId(
+            Long documentId, Long applicationId
     );
 }
