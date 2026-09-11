@@ -1,4 +1,4 @@
-package com.zipdamember.global.jpa;
+package com.zipdamember.global.config.jpa;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

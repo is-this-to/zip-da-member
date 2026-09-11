@@ -1,4 +1,4 @@
-package com.zipdamember.global.openapi;
+package com.zipdamember.global.config.openapi;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;

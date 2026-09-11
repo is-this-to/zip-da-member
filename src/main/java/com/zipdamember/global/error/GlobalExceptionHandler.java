@@ -5,17 +5,18 @@ import com.zipdamember.global.response.GlobalResponseDTO;
 import com.zipdamember.global.response.constant.CustomResponseCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import org.yaml.snakeyaml.constructor.DuplicateKeyException;
 
 import org.springframework.security.access.AccessDeniedException;
 import java.util.Map;
@@ -54,10 +55,23 @@ public class GlobalExceptionHandler {
         return this.generateErrorResponse(CustomResponseCode.UNAUTHORIZED_ERROR);
     }
 
+    // 메서드 파라미터가 맞지 않음
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<GlobalResponseDTO<Void>> handle(MethodArgumentTypeMismatchException e) {
         log.debug(CustomResponseCode.INVALID_PARAMETER_ERROR.name(), String.format("%s : 필드를 확인해 주세요.", e.getName()));
         return this.generateErrorResponse(CustomResponseCode.INVALID_PARAMETER_ERROR);
+    }
+
+    // 메서드 파라미터가 없음
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<GlobalResponseDTO<Void>> handle(
+            MissingServletRequestParameterException e
+    ) {
+        log.debug("필수 요청 파라미터 누락: {}", e.getParameterName());
+
+        return generateErrorResponse(
+                CustomResponseCode.INVALID_PARAMETER_ERROR
+        );
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -81,8 +95,8 @@ public class GlobalExceptionHandler {
         return this.generateErrorResponse(CustomResponseCode.NOT_FOUND_ERROR);
     }
 
-    @ExceptionHandler(DuplicateKeyException.class)
-    public ResponseEntity<GlobalResponseDTO<Void>> handle(DuplicateKeyException e) {
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<GlobalResponseDTO<Void>> handle(DataIntegrityViolationException e) {
         log.error("DB 에러", e);
         return this.generateErrorResponse(CustomResponseCode.DB_DUPLICATED_KEY_ERROR);
     }
