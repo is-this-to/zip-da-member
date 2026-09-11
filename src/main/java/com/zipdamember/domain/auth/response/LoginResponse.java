@@ -4,7 +4,7 @@ import com.zipdamember.global.security.constant.MemberRolePolicy;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 
-public record LoginResponse(
+public record LoginResponse<T>(
     @Schema(description = "회원 식별자")
     String memberId,
 
@@ -15,5 +15,8 @@ public record LoginResponse(
     String accessToken,
 
     @Schema(description = "Access Token 만료 시각")
-    OffsetDateTime accessTokenExpiresAt
+    OffsetDateTime accessTokenExpiresAt,
+
+    @Schema(description = "회원 정보")
+    T principal
 ) {}
