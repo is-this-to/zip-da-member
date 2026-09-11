@@ -22,6 +22,11 @@ public enum CustomResponseCode {
     , UNSUPPORTED_PROVIDER_ERROR(HttpStatus.CONFLICT, "E31")
     // File 관련
     , FILE_MANAGED_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E40")
+    , OCR_PROCESSING_ERROR(HttpStatus.SERVICE_UNAVAILABLE, "E41")
+    // 중개사 전환 신청 관련
+    , AGENT_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "E42")
+    , AGENT_APPLICATION_NOT_EDITABLE(HttpStatus.CONFLICT, "E43")
+    , AGENT_APPLICATION_DUPLICATED(HttpStatus.CONFLICT, "E44")
     // Not Found 관련
     , NOT_FOUND_ERROR(HttpStatus.NOT_FOUND, "E50")
     // Email 관련
