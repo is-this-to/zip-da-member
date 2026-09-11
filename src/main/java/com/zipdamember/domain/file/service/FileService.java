@@ -1,6 +1,7 @@
 package com.zipdamember.domain.file.service;
 
 import com.zipdamember.domain.file.constant.FileCategory;
+import com.zipdamember.domain.file.constant.FileVisibility;
 import com.zipdamember.domain.file.entity.FileObject;
 import com.zipdamember.domain.file.repository.FileObjectRepository;
 import com.zipdamember.domain.file.response.FileUploadResponse;
@@ -164,6 +165,56 @@ public class FileService {
             log.warn("카카오 프로필 이미지 저장을 건너뜁니다: memberId={}", memberId, exception);
             return null;
         }
+    }
+
+    @Transactional
+    public FileUploadResponse uploadOwnedProfile(
+            MultipartFile file,
+            Long memberId,
+            FileCategory category
+    ) {
+        if (category != FileCategory.PROFILE && category != FileCategory.AGENT_PROFILE) {
+            throw new FileManagedException("공개 프로필 이미지 카테고리가 아닙니다.");
+        }
+
+        String objectKey = minioManager.generateProfileObjectKey(file);
+        String fileUri = minioManager.createObjectUri(objectKey);
+        String checksum = minioManager.calculateChecksum(file);
+        minioManager.uploadFile(objectKey, file);
+
+        try {
+            FileObject fileObject = FileObject.createOwnedPublicImage(
+                    memberId,
+                    category,
+                    objectKey,
+                    fileUri,
+                    file.getContentType(),
+                    file.getSize(),
+                    checksum
+            );
+            return FileUploadResponse.from(fileObjectRepository.saveAndFlush(fileObject));
+        } catch (RuntimeException exception) {
+            minioManager.deleteFileQuietly(objectKey);
+            throw exception;
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void validateOwnedProfile(Long fileId, Long memberId, FileCategory category) {
+        FileObject file = fileObjectRepository.findById(fileId)
+                .orElseThrow(() -> new FileManagedException("프로필 파일 정보를 찾을 수 없습니다."));
+        if (!memberId.equals(file.getOwnerMemberId()) || file.getCategory() != category) {
+            throw new FileManagedException("본인이 해당 용도로 업로드한 프로필 파일이 아닙니다.");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public String getPublicFileUri(Long fileId) {
+        if (fileId == null) return null;
+        return fileObjectRepository.findById(fileId)
+                .filter(file -> file.getVisibility() == FileVisibility.PUBLIC)
+                .map(FileObject::getFileUri)
+                .orElse(null);
     }
 
     private void validateKakaoProfileUri(URI uri) {
