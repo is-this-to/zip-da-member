@@ -7,14 +7,16 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
 public record AdminMemberSearchRequest(
-        @Size(max = 255) String keyword,
+        @Size(max = 255) String email,
+        @Size(max = 100) String nickname,
         MemberStatus status,
         MemberRolePolicy role,
         @Min(0) Integer page,
         @Min(1) @Max(100) Integer size
 ) {
     public AdminMemberSearchRequest {
-        keyword = keyword == null || keyword.isBlank() ? null : keyword.strip();
+        email = email == null || email.isBlank() ? null : email.strip();
+        nickname = nickname == null || nickname.isBlank() ? null : nickname.strip();
         page = page == null ? 0 : page;
         size = size == null ? 20 : size;
     }

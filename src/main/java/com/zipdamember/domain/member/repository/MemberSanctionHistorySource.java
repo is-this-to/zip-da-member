@@ -10,6 +10,7 @@ public record MemberSanctionHistorySource(
         MemberSanctionScope scope,
         MemberSuspensionReasonCode reasonCode,
         LocalDateTime startAt,
+        LocalDateTime endAt,
         LocalDateTime releasedAt,
         String sanctionedByName,
         String releasedByName

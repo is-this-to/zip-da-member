@@ -74,6 +74,7 @@ public class MemberSanctionQueryRepository {
                         memberSanction.scope,
                         memberSanction.reasonCode,
                         memberSanction.startAt,
+                        memberSanction.endAt,
                         memberSanction.releasedAt,
                         sanctionedByAdmin.adminName,
                         releasedByAdmin.adminName
