@@ -52,13 +52,21 @@ public class AgentApplicationService {
     private final DocumentTextExtractor documentTextExtractor;
     private final AgentDocumentOcrParser agentDocumentOcrParser;
 
+    /**
+     * 공인중개사 신청 초안 작성 후
+     * @param memberId 신청한 회원 식별자
+     * @return
+     */
     @Transactional
-    public AgentApplicationResponse createDraft(Long memberId) {
+    public AgentApplicationResponse createDraft(String memberId) {
         validateApplicant(memberId);
 
         return agentApplicationRepository
-                .findTopByMemberIdOrderByCreatedAtDescApplicationIdDesc(memberId)
+                .findTopByMemberIdOrderByCreatedAtDescApplicationIdDesc(Long.parseLong(memberId))
                 .map(application -> {
+                    if (application.getStatus() == AgentApplicationStatus.REJECTED) {
+                        return toResponse(createApplication(Long.parseLong(memberId)));
+                    }
                     if (!application.isEditable()) {
                         throw new BusinessException(
                                 CustomResponseCode.AGENT_APPLICATION_DUPLICATED,
@@ -67,15 +75,17 @@ public class AgentApplicationService {
                     }
                     return toResponse(application);
                 })
-                .orElseGet(() -> toResponse(
-                        agentApplicationRepository.saveAndFlush(AgentApplication.create(memberId))
-                ));
+                .orElseGet(() -> toResponse(createApplication(Long.parseLong(memberId))));
+    }
+
+    private AgentApplication createApplication(Long memberId) {
+        return agentApplicationRepository.saveAndFlush(AgentApplication.create(memberId));
     }
 
     @Transactional(readOnly = true)
-    public AgentApplicationResponse getCurrent(Long memberId) {
+    public AgentApplicationResponse getCurrent(String memberId) {
         AgentApplication application = agentApplicationRepository
-                .findTopByMemberIdOrderByCreatedAtDescApplicationIdDesc(memberId)
+                .findTopByMemberIdOrderByCreatedAtDescApplicationIdDesc(Long.parseLong(memberId))
                 .orElseThrow(this::applicationNotFound);
         return toResponse(application);
     }
@@ -84,7 +94,7 @@ public class AgentApplicationService {
     public AgentApplicationResponse update(
             Long applicationId,
             AgentApplicationUpdateRequest request,
-            Long memberId
+            String memberId
     ) {
         AgentApplication application = getOwnedApplicationForUpdate(applicationId, memberId);
         ensureEditable(application);
@@ -108,7 +118,7 @@ public class AgentApplicationService {
             Long applicationId,
             AgentApplicationDocumentType documentType,
             MultipartFile multipartFile,
-            Long memberId
+            String memberId
     ) {
         AgentApplication application = getOwnedApplicationForUpdate(applicationId, memberId);
         ensureEditable(application);
@@ -125,7 +135,7 @@ public class AgentApplicationService {
 
         FileObject storedFile = fileService.storePrivateAgentDocument(
                 file,
-                memberId,
+                Long.parseLong(memberId),
                 resolveFileCategory(documentType)
         );
 
@@ -156,7 +166,7 @@ public class AgentApplicationService {
     }
 
     @Transactional
-    public AgentApplicationResponse submit(Long applicationId, Long memberId) {
+    public AgentApplicationResponse submit(Long applicationId, String memberId) {
         AgentApplication application = getOwnedApplicationForUpdate(applicationId, memberId);
         ensureEditable(application);
         MemberAccount member = validateApplicant(memberId);
@@ -173,7 +183,7 @@ public class AgentApplicationService {
     public AgentDocumentDownloadResponse getDocumentDownloadUrl(
             Long applicationId,
             Long documentId,
-            Long memberId
+            String memberId
     ) {
         getOwnedApplication(applicationId, memberId);
         AgentApplicationDocument document = agentApplicationDocumentRepository
@@ -188,15 +198,20 @@ public class AgentApplicationService {
         );
     }
 
-    private MemberAccount validateApplicant(Long memberId) {
-        MemberAccount member = memberAccountRepository.findById(memberId)
+    /**
+     * 신청한 회원이 현재 신청할 수 있는 상태인지 검증
+     * @param memberId 신청한 회원의 식별자
+     * @return 신청한 회원 엔티티
+     */
+    private MemberAccount validateApplicant(String memberId) {
+        MemberAccount member = memberAccountRepository.findById(Long.parseLong(memberId))
                 .orElseThrow(() -> new BusinessException(
                         CustomResponseCode.NOT_FOUND_RESOURCE_ERROR,
                         "회원 정보를 찾을 수 없습니다."
                 ));
         if (member.getStatus() != MemberStatus.ACTIVE
                 || member.getMemberRole() != MemberRolePolicy.USER
-                || agentProfileRepository.existsByMemberId(memberId)) {
+                || agentProfileRepository.existsByMemberId(Long.parseLong(memberId))) {
             throw new BusinessException(
                     CustomResponseCode.INVALID_PARAMETER_ERROR,
                     "활성 일반 회원만 중개사 전환을 신청할 수 있습니다."
@@ -262,12 +277,12 @@ public class AgentApplicationService {
         }
     }
 
-    private AgentApplication getOwnedApplicationForUpdate(Long applicationId, Long memberId) {
-        return agentApplicationRepository.findByApplicationIdAndMemberId(applicationId, memberId)
+    private AgentApplication getOwnedApplicationForUpdate(Long applicationId, String memberId) {
+        return agentApplicationRepository.findByApplicationIdAndMemberId(applicationId, Long.parseLong(memberId))
                 .orElseThrow(this::applicationNotFound);
     }
 
-    private AgentApplication getOwnedApplication(Long applicationId, Long memberId) {
+    private AgentApplication getOwnedApplication(Long applicationId, String memberId) {
         return agentApplicationRepository.findById(applicationId)
                 .filter(application -> application.getMemberId().equals(memberId))
                 .orElseThrow(this::applicationNotFound);

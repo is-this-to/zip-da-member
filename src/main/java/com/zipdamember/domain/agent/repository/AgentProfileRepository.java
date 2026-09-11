@@ -15,6 +15,8 @@ public interface AgentProfileRepository extends Repository<AgentProfile, Long>,
 
     Optional<AgentProfile> findByAgentId(Long agentId);
 
+    Optional<AgentProfile> findByMemberId(Long memberId);
+
     Page<AgentProfile> findAll(Pageable pageable);
 
     Page<AgentProfile> findAllByAgencyNameContaining(String agencyName, Pageable pageable);

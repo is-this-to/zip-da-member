@@ -109,6 +109,13 @@ public class AgentProfile {
         this.statusChangedAt = LocalDateTime.now();
     }
 
+    public void updatePublicProfile(String intro, Long profileFileId) {
+        if (intro != null) {
+            this.intro = intro;
+        }
+        this.profileFileId = profileFileId;
+    }
+
     @PrePersist
     private void generateAgentId() {
         if (agentId == null) {

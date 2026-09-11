@@ -48,8 +48,9 @@ public class AgentApplicationController {
     @PreAuthorize("hasRole('USER')")
     @PostMapping
     public ResponseEntity<GlobalResponseDTO<AgentApplicationResponse>> createDraft(Authentication authentication) {
-        AgentApplicationResponse response = agentApplicationService.createDraft(memberId(authentication));
+        AgentApplicationResponse response = agentApplicationService.createDraft(authentication.getName());
         // URI.create("/api/member/agent-applications/": URI.create(...)는 응답의 Location 헤더를 만듦
+        // Location 헤더: 금 생성한 리소스의 주소는 여기입니다”라고 알려주는 HTTP 표준 응답 헤더
         return ResponseEntity.created(URI.create("/api/member/agent-applications/" + response.applicationId())).body(GlobalResponseDTO.success(response));
     }
 
@@ -60,7 +61,7 @@ public class AgentApplicationController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(GlobalResponseDTO.success(
-                agentApplicationService.getCurrent(memberId(authentication))
+                agentApplicationService.getCurrent(authentication.getName())
         ));
     }
 
@@ -76,7 +77,7 @@ public class AgentApplicationController {
                 agentApplicationService.update(
                         applicationId,
                         request,
-                        memberId(authentication)
+                        authentication.getName()
                 )
         ));
     }
@@ -104,7 +105,7 @@ public class AgentApplicationController {
                         applicationId,
                         documentType,
                         file,
-                        memberId(authentication)
+                        authentication.getName()
                 )
         ));
     }
@@ -117,7 +118,7 @@ public class AgentApplicationController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(GlobalResponseDTO.success(
-                agentApplicationService.submit(applicationId, memberId(authentication))
+                agentApplicationService.submit(applicationId, authentication.getName())
         ));
     }
 
@@ -130,15 +131,7 @@ public class AgentApplicationController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(GlobalResponseDTO.success(
-                agentApplicationService.getDocumentDownloadUrl(
-                        applicationId,
-                        documentId,
-                        memberId(authentication)
-                )
+                agentApplicationService.getDocumentDownloadUrl(applicationId, documentId, authentication.getName())
         ));
-    }
-
-    private Long memberId(Authentication authentication) {
-        return Long.parsauthentication.getName());
     }
 }
