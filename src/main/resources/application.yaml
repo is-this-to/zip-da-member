@@ -94,7 +94,6 @@ spring:
             # 카카오 응답에서 사용자 식별을 위한 필드명
             user-name-attribute: id
 
-
 # Springdoc Openapi
 springdoc:
   # 클라이언트가 서버로 데이터를 보낼 때의 기본 형식을 지정하는 속성
@@ -152,6 +151,7 @@ minio:
   minio-access-key: ${MINIO_ACCESS_KEY}
   minio-secret-key: ${MINIO_SECRET_KEY}
   minio-profile-path: ${MINIO_PROFILE_PATH}
+  minio-document-path: ${MINIO_DOCUMENT_PATH:agent-documents}
   allow-image-extensions: [
     "image/jpg",
     "image/jpeg",
@@ -185,3 +185,12 @@ zipda:
     cleanup:
       cron: "0 0 18 * * *"
       zone: "Asia/Seoul"
+
+  ocr:
+    enabled: ${ZIPDA_OCR_ENABLED}
+    project-id: ${GOOGLE_CLOUD_PROJECT}
+    input-bucket: ${GOOGLE_CLOUD_VISION_INPUT_BUCKET}
+    output-bucket: ${GOOGLE_CLOUD_VISION_OUTPUT_BUCKET}
+    timeout-seconds: ${ZIPDA_OCR_TIMEOUT_SECONDS}
+    max-file-size-bytes: ${ZIPDA_OCR_MAX_FILE_SIZE_BYTES}
+    max-pdf-pages: ${ZIPDA_OCR_MAX_PDF_PAGES}
