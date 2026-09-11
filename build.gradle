@@ -19,12 +19,9 @@ repositories {
 }
 
 dependencies {
-    // TSID
-    implementation 'com.github.f4b6a3:tsid-creator:5.2.6'
 
     // Web
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
     // Security
@@ -71,9 +68,6 @@ dependencies {
 
     // email 발송
     implementation 'org.springframework.boot:spring-boot-starter-mail'
-    
-    // 외부 API REST 호출
-    implementation 'org.springframework.boot:spring-boot-starter-restclient'
 }
 
 tasks.named('test') {
