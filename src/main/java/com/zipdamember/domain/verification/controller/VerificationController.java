@@ -37,7 +37,6 @@ public class VerificationController {
             CustomResponseCode.DB_ERROR,
             CustomResponseCode.SYSTEM_ERROR
     })
-    @PreAuthorize("!isAuthenticated()")
     @PostMapping("/member-validations")
     public ResponseEntity<GlobalResponseDTO<RegistrationDuplicateResponse>> checkDuplicate(@Valid @RequestBody ValidateMemberRequest validateMemberRequest) {
         return ResponseEntity.ok(GlobalResponseDTO.success(verificationService.checkDuplicate(validateMemberRequest)));
