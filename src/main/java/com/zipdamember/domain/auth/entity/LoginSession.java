@@ -22,7 +22,7 @@ public class LoginSession {
     @Column(name = "member_id", nullable = false, updatable = false, columnDefinition = "BIGINT UNSIGNED")
     private Long memberId;
 
-    @Column(name = "refresh_token", nullable = false, unique = true, length = 300)
+    @Column(name = "refresh_token", nullable = false, unique = true, length = 512)
     private String refreshToken;
 
     @Column(name = "device_id", length = 26)

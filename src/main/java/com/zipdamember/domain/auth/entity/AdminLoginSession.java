@@ -23,7 +23,7 @@ public class AdminLoginSession {
     @Column(name = "admin_id", nullable = false, updatable = false, columnDefinition = "BIGINT UNSIGNED")
     private Long adminId;
 
-    @Column(name = "refresh_token", nullable = false, unique = true, length = 300)
+    @Column(name = "refresh_token", nullable = false, unique = true, length = 512)
     private String refreshToken;
 
     @Column(name = "device_id", length = 26)
