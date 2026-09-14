@@ -92,6 +92,7 @@ public class JwtProvider {
             .and()
             .subject(String.valueOf(member.getMemberId())) // sub 셋팅
             .issuer(jwtConfig.issuer()) // 토큰 발급자 셋팅
+            .id(UUID.randomUUID().toString()) // 토큰 고유 식별자 셋팅
             .issuedAt(now) // 토급 발급시간 설정
             .expiration(new Date(now.getTime() + expiry)) // 토큰 만료 시간 설정
             .claim("type", "MEMBER")
