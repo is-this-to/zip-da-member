@@ -11,6 +11,8 @@ public record MemberProfileUpdateRequest(
         @Pattern(regexp = "^01[016789]\\d{7,8}$")
         String phone,
         ProfileImageUpdatePolicy profileImageAction,
-        String profileFileId
+        String profileFileId,
+        @Size(min = 2, max = 50, message = "이름은 2~50자여야 합니다.")
+        String name
 ) {
 }

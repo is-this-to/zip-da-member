@@ -86,7 +86,8 @@ public class MemberAccount {
         memberRole = MemberRolePolicy.AGENT;
     }
 
-    public void updateProfile(String nickname, String phone, Long profileFileId) {
+    public void updateProfile(String name, String nickname, String phone, Long profileFileId) {
+        if (name != null) this.name = name;
         if (nickname != null) this.nickname = nickname;
         if (phone != null) this.phone = phone;
         this.profileFileId = profileFileId;
