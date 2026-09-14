@@ -59,11 +59,12 @@ public class MemberProfileService {
         MemberAccount member = getMember(memberId);
         String nickname = normalizeNullable(request.nickname());
         String phone = normalizeNullable(request.phone());
+        String name = normalizeNullable(request.name());
         ProfileImageUpdatePolicy imageAction = request.profileImageAction() == null
                 ? ProfileImageUpdatePolicy.KEEP
                 : request.profileImageAction();
 
-        if (nickname == null && phone == null && imageAction == ProfileImageUpdatePolicy.KEEP) {
+        if (nickname == null && phone == null && imageAction == ProfileImageUpdatePolicy.KEEP && name == null) {
             throw new BusinessException(
                     CustomResponseCode.INVALID_PARAMETER_ERROR,
                     "변경할 프로필 정보를 한 개 이상 전달해야 합니다."
@@ -79,7 +80,7 @@ public class MemberProfileService {
         }
 
         Long profileFileId = resolveProfileFileId(member, request, imageAction);
-        member.updateProfile(nickname, phone, profileFileId);
+        member.updateProfile(name, nickname, phone, profileFileId);
         eventPublisher.publishEvent(new MemberProfileUpdatedEvent(
                 memberId.toString(),
                 member.getNickname(),
