@@ -22,12 +22,11 @@ public class AdminMemberService {
         QMemberAccount member = QMemberAccount.memberAccount;
         BooleanBuilder condition = new BooleanBuilder();
 
-        if (request.keyword() != null) {
-            String pattern = likePattern(request.keyword());
-            condition.and(
-                    member.email.like(pattern, '!')
-                            .or(member.nickname.like(pattern, '!')) // 이메일·닉네임 부분일치
-            );
+        if (request.email() != null) {
+            condition.and(member.email.like(likePattern(request.email()), '!')); // 이메일 부분일치
+        }
+        if (request.nickname() != null) {
+            condition.and(member.nickname.like(likePattern(request.nickname()), '!')); // 닉네임 부분일치
         }
         if (request.status() != null) {
             condition.and(member.status.eq(request.status())); // 회원 상태
