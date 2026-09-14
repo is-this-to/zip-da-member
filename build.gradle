@@ -19,6 +19,13 @@ repositories {
 }
 
 dependencies {
+    implementation platform('com.google.cloud:libraries-bom:26.86.0')
+
+    // Google Cloud Vision OCR (이미지/PDF) 및 PDF 임시 객체 저장
+    implementation 'com.google.cloud:google-cloud-vision'
+    implementation 'com.google.cloud:google-cloud-storage'
+    implementation 'com.google.protobuf:protobuf-java-util'
+
     // TSID
     implementation 'com.github.f4b6a3:tsid-creator:5.2.6'
 

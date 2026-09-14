@@ -85,4 +85,17 @@ public class MemberAccount {
     public void activateAgentRole() {
         memberRole = MemberRolePolicy.AGENT;
     }
+
+    public void updateProfile(String nickname, String phone, Long profileFileId) {
+        if (nickname != null) this.nickname = nickname;
+        if (phone != null) this.phone = phone;
+        this.profileFileId = profileFileId;
+    }
+
+    public void changePassword(String encodedPassword) {
+        if (encodedPassword == null || encodedPassword.isBlank()) {
+            throw new IllegalArgumentException("암호화된 비밀번호는 필수입니다.");
+        }
+        password = encodedPassword;
+    }
 }

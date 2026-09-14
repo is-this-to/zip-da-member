@@ -52,6 +52,39 @@ public class MimeEmailSender implements EmailSender {
         }
     }
 
+    @Override
+    public void sendPasswordVerificationCode(String email, String verificationCode) {
+        sendCodeEmail(
+                email,
+                verificationCode,
+                "[ZIPDA] 비밀번호 변경 인증번호 안내",
+                "비밀번호 변경을 위한 인증번호입니다."
+        );
+    }
+
+    @Override
+    public void sendPasswordResetLink(String email, String resetLink) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(
+                    mimeMessage,
+                    false,
+                    StandardCharsets.UTF_8.name()
+            );
+            helper.setFrom(senderEmail);
+            helper.setTo(email);
+            helper.setSubject("[ZIPDA] 비밀번호 재설정 안내");
+            helper.setText(createPasswordResetBody(resetLink), true);
+            mailSender.send(mimeMessage);
+        } catch (MessagingException | MailException exception) {
+            throw new BusinessException(
+                    CustomResponseCode.EMAIL_SEND_ERROR,
+                    "비밀번호 재설정 메일 발송에 실패했습니다.",
+                    exception
+            );
+        }
+    }
+
     private String createHtmlBody(String verificationCode) {
         return """
                 <!doctype html>
@@ -98,5 +131,46 @@ public class MimeEmailSender implements EmailSender {
                 </body>
                 </html>
                 """.formatted(verificationCode);
+    }
+
+    private void sendCodeEmail(String email, String code, String subject, String description) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(
+                    mimeMessage, false, StandardCharsets.UTF_8.name()
+            );
+            helper.setFrom(senderEmail);
+            helper.setTo(email);
+            helper.setSubject(subject);
+            helper.setText("""
+                    <html lang="ko"><body style="font-family:Arial,sans-serif;padding:32px;color:#263021;">
+                    <h2 style="color:#6f8750;">이메일 인증번호를 확인해주세요</h2>
+                    <p>%s</p>
+                    <div style="font-size:32px;font-weight:700;letter-spacing:10px;padding:22px;background:#eef4e5;">%s</div>
+                    <p>인증번호는 발송 시점부터 5분 동안 유효합니다.</p>
+                    </body></html>
+                    """.formatted(description, code), true);
+            mailSender.send(mimeMessage);
+        } catch (MessagingException | MailException exception) {
+            throw new BusinessException(
+                    CustomResponseCode.EMAIL_SEND_ERROR,
+                    "이메일 인증번호 발송에 실패했습니다.",
+                    exception
+            );
+        }
+    }
+
+    private String createPasswordResetBody(String resetLink) {
+        return """
+                <!doctype html>
+                <html lang="ko">
+                <body style="font-family:Arial,sans-serif;color:#263021;padding:32px;">
+                  <h2 style="color:#6f8750;">ZIPDA 비밀번호 재설정</h2>
+                  <p>아래 버튼을 눌러 비밀번호를 재설정해 주세요.</p>
+                  <p><a href="%s" style="display:inline-block;padding:12px 20px;background:#718355;color:#fff;text-decoration:none;border-radius:8px;">비밀번호 재설정</a></p>
+                  <p style="color:#7a8175;">본인이 요청하지 않았다면 이 메일을 무시해 주세요.</p>
+                </body>
+                </html>
+                """.formatted(resetLink);
     }
 }

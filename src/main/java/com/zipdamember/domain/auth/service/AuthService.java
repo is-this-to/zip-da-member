@@ -7,6 +7,7 @@ import com.zipdamember.domain.auth.request.LoginRequest;
 import com.zipdamember.domain.auth.request.TermAgreementRequest;
 import com.zipdamember.domain.auth.response.CreateMemberResponse;
 import com.zipdamember.domain.auth.response.LoginResponse;
+import com.zipdamember.domain.auth.response.MemberPrincipalResponse;
 import com.zipdamember.domain.file.service.FileService;
 import com.zipdamember.domain.member.constant.MemberStatus;
 import com.zipdamember.domain.member.entity.MemberAccount;
@@ -57,7 +58,11 @@ public class AuthService {
     private final FileService fileService;
 
     @Transactional(rollbackFor = Exception.class)
-    public LoginResponse login(HttpServletRequest request, HttpServletResponse response, LoginRequest loginRequest) {
+    public LoginResponse<MemberPrincipalResponse> login(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            LoginRequest loginRequest
+    ) {
         MemberAccount member = authenticate(loginRequest);
         String accessToken = jwtProvider.generateAccessToken(member);
         String refreshToken = jwtProvider.generateRefreshToken(member);
@@ -75,10 +80,7 @@ public class AuthService {
         loginSessionRepository.saveAndFlush(session);
         cookieManager.setRefreshTokenToCookie(response, refreshToken);
 
-        return new LoginResponse(
-            String.valueOf(member.getMemberId()), member.getMemberRole(), accessToken,
-            jwtProvider.extractClaims(accessToken).getExpiration().toInstant().atOffset(ZoneOffset.UTC)
-        );
+        return createLoginResponse(accessToken, member);
     }
 
     @Transactional(readOnly = true)
@@ -101,7 +103,10 @@ public class AuthService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public LoginResponse reissue(HttpServletRequest request, HttpServletResponse response) {
+    public LoginResponse<MemberPrincipalResponse> reissue(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
         // 회원 Refresh Token만 재발급 자격 증명으로 사용
         String refreshToken = cookieManager.getRefreshTokenToCookie(request)
             .filter(token -> !token.isBlank())
@@ -144,10 +149,7 @@ public class AuthService {
             throw new InvalidTokenException("동일한 Refresh Token이 생성되었습니다. 잠시 후 다시 요청해주세요.");
         }
 
-        LoginResponse result = new LoginResponse(
-            String.valueOf(memberId), member.getMemberRole(), accessToken,
-            jwtProvider.extractClaims(accessToken).getExpiration().toInstant().atOffset(ZoneOffset.UTC)
-        );
+        LoginResponse<MemberPrincipalResponse> result = createLoginResponse(accessToken, member);
         session.rotate(newRefreshToken, LocalDateTime.ofInstant(
             jwtProvider.extractClaims(newRefreshToken).getExpiration().toInstant(), ZoneId.systemDefault()
         ));
@@ -156,6 +158,20 @@ public class AuthService {
         // 브라우저 쿠키 교체
         cookieManager.setRefreshTokenToCookie(response, newRefreshToken);
         return result;
+    }
+
+    private LoginResponse<MemberPrincipalResponse> createLoginResponse(
+            String accessToken,
+            MemberAccount member
+    ) {
+        // 로그인 공통 응답 생성
+        return new LoginResponse<>(
+                member.getMemberId().toString(),
+                member.getMemberRole(),
+                accessToken,
+                jwtProvider.extractClaims(accessToken).getExpiration().toInstant().atOffset(ZoneOffset.UTC),
+                MemberPrincipalResponse.from(member)
+        );
     }
 
     @Transactional(rollbackFor = Exception.class)

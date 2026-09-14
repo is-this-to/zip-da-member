@@ -2,6 +2,8 @@ package com.zipdamember.domain.agent.entity;
 
 import com.github.f4b6a3.tsid.TsidCreator;
 import com.zipdamember.domain.agent.constant.AgentApplicationDocumentType;
+import com.zipdamember.domain.agent.constant.DocumentOcrStatus;
+import com.zipdamember.domain.agent.ocr.DocumentOcrResult;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -18,6 +20,7 @@ import org.hibernate.annotations.SQLDelete;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -51,6 +54,39 @@ public class AgentApplicationDocument {
     @Column(name = "checksum", nullable = false, length = 64)
     private String checksum;
 
+    @Enumerated(EnumType.STRING)
+    @Column(
+            name = "ocr_status",
+            nullable = false,
+            length = 20,
+            columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'"
+    )
+    private DocumentOcrStatus ocrStatus = DocumentOcrStatus.PENDING;
+
+    @Column(name = "ocr_text", columnDefinition = "MEDIUMTEXT")
+    private String ocrText;
+
+    @Column(name = "ocr_business_no", length = 50)
+    private String ocrBusinessNo;
+
+    @Column(name = "ocr_start_date")
+    private LocalDate ocrStartDate;
+
+    @Column(name = "ocr_representative_name", length = 50)
+    private String ocrRepresentativeName;
+
+    @Column(name = "ocr_agent_registration_no", length = 20)
+    private String ocrAgentRegistrationNo;
+
+    @Column(name = "ocr_agency_name", length = 50)
+    private String ocrAgencyName;
+
+    @Column(name = "ocr_completed_at")
+    private LocalDateTime ocrCompletedAt;
+
+    @Column(name = "ocr_failure_reason", length = 500)
+    private String ocrFailureReason;
+
     @CreatedDate
     @Column(name = "uploaded_at", nullable = false, updatable = false)
     private LocalDateTime uploadedAt;
@@ -60,6 +96,53 @@ public class AgentApplicationDocument {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    public static AgentApplicationDocument create(Long applicationId, Long fileId,
+                                                   AgentApplicationDocumentType documentType,
+                                                   String checksum) {
+        AgentApplicationDocument document = new AgentApplicationDocument();
+        document.applicationId = applicationId;
+        document.fileId = fileId;
+        document.documentType = documentType;
+        document.checksum = checksum;
+        document.ocrStatus = DocumentOcrStatus.PENDING;
+        return document;
+    }
+
+    public void completeOcr(DocumentOcrResult result, LocalDateTime now) {
+        ocrStatus = DocumentOcrStatus.COMPLETED;
+        ocrText = result.rawText();
+        ocrBusinessNo = result.businessRegistrationNo();
+        ocrStartDate = result.startDate();
+        ocrRepresentativeName = result.representativeName();
+        ocrAgentRegistrationNo = result.agentRegistrationNo();
+        ocrAgencyName = result.agencyName();
+        ocrCompletedAt = now;
+        ocrFailureReason = null;
+    }
+
+    public void failOcr(String reason, LocalDateTime now) {
+        ocrStatus = DocumentOcrStatus.FAILED;
+        ocrCompletedAt = now;
+        ocrFailureReason = reason == null
+                ? null
+                : reason.substring(0, Math.min(reason.length(), 500));
+    }
+
+    public boolean isOcrCompleted() {
+        return ocrStatus == DocumentOcrStatus.COMPLETED;
+    }
+
+    public DocumentOcrResult toOcrResult() {
+        return new DocumentOcrResult(
+                ocrText,
+                ocrBusinessNo,
+                ocrStartDate,
+                ocrRepresentativeName,
+                ocrAgentRegistrationNo,
+                ocrAgencyName
+        );
+    }
 
     @PrePersist
     private void generateDocumentId() {

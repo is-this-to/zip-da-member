@@ -6,6 +6,7 @@ import com.zipdamember.domain.auth.request.SocialSignupRequest;
 import com.zipdamember.domain.auth.request.SocialAccountLinkRequest;
 import com.zipdamember.domain.auth.response.CreateMemberResponse;
 import com.zipdamember.domain.auth.response.LoginResponse;
+import com.zipdamember.domain.auth.response.MemberPrincipalResponse;
 import com.zipdamember.domain.auth.response.SocialSignupContextResponse;
 import com.zipdamember.domain.auth.service.AuthService;
 import com.zipdamember.domain.auth.service.SocialAuthService;
@@ -105,7 +106,7 @@ public class AuthController {
     @Operation(summary = "회원 이메일 로그인", description = "USER·AGENT 공통 로그인")
     @SecurityRequirements
     @PostMapping("/api/member/auth/sessions")
-    public ResponseEntity<GlobalResponseDTO<LoginResponse>> login(
+    public ResponseEntity<GlobalResponseDTO<LoginResponse<MemberPrincipalResponse>>> login(
         @Valid @RequestBody LoginRequest loginRequest,
         HttpServletRequest request,
         HttpServletResponse response
@@ -116,7 +117,7 @@ public class AuthController {
     @Operation(summary = "회원 토큰 재발급", description = "회원 Refresh 쿠키로 토큰 회전")
     @SecurityRequirements
     @PostMapping("/api/member/auth/token-refreshes")
-    public ResponseEntity<GlobalResponseDTO<LoginResponse>> reissue(
+    public ResponseEntity<GlobalResponseDTO<LoginResponse<MemberPrincipalResponse>>> reissue(
         HttpServletRequest request, HttpServletResponse response
     ) {
         return ResponseEntity.ok(GlobalResponseDTO.success(authService.reissue(request, response)));

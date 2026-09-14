@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import com.zipdamember.domain.file.constant.FileCategory;
 import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "회원 파일 API", description = "회원가입 파일 업로드")
@@ -42,5 +44,37 @@ public class FileController {
     @PostMapping(value = "/profiles", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<GlobalResponseDTO<FileUploadResponse>> uploadProfile(@RequestPart("file") MultipartFile file) {
         return ResponseEntity.ok(GlobalResponseDTO.success(fileService.uploadProfile(file)));
+    }
+
+    @Operation(summary = "내 프로필 이미지 업로드")
+    @PreAuthorize("hasAnyRole('USER', 'AGENT')")
+    @PostMapping(value = "/profiles/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<GlobalResponseDTO<FileUploadResponse>> uploadMyProfile(
+            @RequestPart("file") MultipartFile file,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(GlobalResponseDTO.success(
+                fileService.uploadOwnedProfile(
+                        file,
+                        Long.parseLong(authentication.getName()),
+                        FileCategory.PROFILE
+                )
+        ));
+    }
+
+    @Operation(summary = "중개사 대표 이미지 업로드")
+    @PreAuthorize("hasRole('AGENT')")
+    @PostMapping(value = "/agent-profiles/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<GlobalResponseDTO<FileUploadResponse>> uploadAgentProfile(
+            @RequestPart("file") MultipartFile file,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(GlobalResponseDTO.success(
+                fileService.uploadOwnedProfile(
+                        file,
+                        Long.parseLong(authentication.getName()),
+                        FileCategory.AGENT_PROFILE
+                )
+        ));
     }
 }

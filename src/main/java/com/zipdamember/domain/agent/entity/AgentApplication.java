@@ -3,6 +3,7 @@ package com.zipdamember.domain.agent.entity;
 import com.github.f4b6a3.tsid.TsidCreator;
 import com.zipdamember.domain.agent.constant.AgentApplicationStatus;
 import com.zipdamember.domain.agent.constant.VerificationResultStatus;
+import com.zipdamember.domain.agent.ocr.DocumentOcrResult;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -60,10 +61,10 @@ public class AgentApplication {
     @Column(name = "request_business_no", length = 50)
     private String requestBusinessNo;
 
-    @Column(name = "request_agency_registration_no", length = 20)
+    @Column(name = "request_agent_registration_no", length = 20)
     private String requestAgencyRegistrationNo;
 
-    @Column(name = "request_agency_name", length = 150)
+    @Column(name = "agency_name", length = 50)
     private String requestAgencyName;
 
     @Column(name = "request_start_date")
@@ -78,6 +79,62 @@ public class AgentApplication {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+    public static AgentApplication create(Long memberId) {
+        if (memberId == null || memberId <= 0) {
+            throw new IllegalArgumentException("신청 회원 아이디는 필수입니다.");
+        }
+
+        AgentApplication application = new AgentApplication();
+        application.memberId = memberId;
+        application.status = AgentApplicationStatus.PENDING;
+        return application;
+    }
+
+    public boolean isEditable() {
+        return status == AgentApplicationStatus.REJECTED
+                || status == AgentApplicationStatus.INCORRECT_DATA
+                || (status == AgentApplicationStatus.PENDING && submittedAt == null);
+    }
+
+    public void updateRequestedInformation(String businessNo, LocalDate startDate,
+                                           String representativeName, String agentRegistrationNo,
+                                           String agencyName) {
+        ensureEditable();
+        requestBusinessNo = businessNo;
+        requestStartDate = startDate;
+        requestRepresentativeName = representativeName;
+        requestAgencyRegistrationNo = agentRegistrationNo;
+        requestAgencyName = agencyName;
+    }
+
+    public void applyOcrSuggestion(DocumentOcrResult result) {
+        ensureEditable();
+        if (isBlank(requestBusinessNo) && !isBlank(result.businessRegistrationNo())) {
+            requestBusinessNo = result.businessRegistrationNo();
+        }
+        if (requestStartDate == null && result.startDate() != null) {
+            requestStartDate = result.startDate();
+        }
+        if (isBlank(requestRepresentativeName) && !isBlank(result.representativeName())) {
+            requestRepresentativeName = result.representativeName();
+        }
+        if (isBlank(requestAgencyRegistrationNo) && !isBlank(result.agentRegistrationNo())) {
+            requestAgencyRegistrationNo = result.agentRegistrationNo();
+        }
+        if (isBlank(requestAgencyName) && !isBlank(result.agencyName())) {
+            requestAgencyName = result.agencyName();
+        }
+    }
+
+    public void submit(LocalDateTime now) {
+        ensureEditable();
+        status = AgentApplicationStatus.PENDING;
+        submittedAt = now;
+        rejectReason = null;
+        supplementDeadline = null;
+        reviewerAdminId = null;
+    }
+
 
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
@@ -153,5 +210,15 @@ public class AgentApplication {
 
         status = AgentApplicationStatus.UNDER_REVIEW;
         return status;
+    }
+
+    private void ensureEditable() {
+        if (!isEditable()) {
+            throw new IllegalStateException("현재 상태에서는 중개사 신청을 수정할 수 없습니다.");
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
