@@ -32,6 +32,7 @@ import com.zipdamember.domain.agent.response.AdminAgentApplicationDocumentRespon
 import com.zipdamember.domain.agent.response.AdminAgentApplicationListResponse;
 import com.zipdamember.domain.agent.response.AdminAgentApplicationSupplementResponse;
 import com.zipdamember.domain.agent.response.AdminBusinessVerificationResponse;
+import com.zipdamember.domain.agent.response.AgentDocumentDownloadResponse;
 import com.zipdamember.domain.member.repository.MemberAccountRepository;
 import com.zipdamember.domain.file.service.FileService;
 import com.zipdamember.domain.member.constant.MemberStatus;
@@ -50,6 +51,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class AdminAgentApplicationService {
+
+    private static final int PRIVATE_URL_EXPIRY_SECONDS = 300;
 
     private final AdminAgentApplicationQueryRepository adminAgentApplicationQueryRepository;
     private final AgentApplicationRepository agentApplicationRepository;
@@ -107,7 +110,7 @@ public class AdminAgentApplicationService {
                 .stream()
                 .map(document -> AdminAgentApplicationDocumentResponse.of(
                         document,
-                        fileService.createPrivateDownloadUrl(document.getFileId())
+                        null
                 ))
                 .toList();
 
@@ -118,6 +121,48 @@ public class AdminAgentApplicationService {
                 businessVerification,
                 agencyRegistrationVerification,
                 documents
+        );
+    }
+
+    @Transactional
+    public AgentDocumentDownloadResponse getDocumentDownloadUrl(
+            Long applicationId,
+            Long documentId,
+            Long reviewerAdminId,
+            AdminRoleCode reviewerRole,
+            String ipAddress,
+            String userAgent
+    ) {
+        AgentApplication application = agentApplicationRepository.findById(applicationId)
+                .orElseThrow(() -> new NotFoundResourceException("중개사 신청 정보를 찾을 수 없습니다."));
+
+        if (application.getSubmittedAt() == null) {
+            throw new NotFoundResourceException("제출된 중개사 신청 서류를 찾을 수 없습니다.");
+        }
+
+        var document = agentApplicationDocumentRepository
+                .findByDocumentIdAndApplicationId(documentId, applicationId)
+                .orElseThrow(() -> new NotFoundResourceException("중개사 신청 서류를 찾을 수 없습니다."));
+
+        String downloadUrl = fileService.createPrivateDownloadUrl(document.getFileId());
+
+        adminAuditLogService.recordSuccess(new AdminAuditLogWriteRequest(
+                reviewerAdminId,
+                AdminAuditActorType.ADMIN,
+                reviewerRole,
+                AdminAuditAction.AGENT_DOCUMENT_VIEW,
+                AdminAuditTargetService.MEMBER,
+                "AGENT_APPLICATION_DOCUMENT",
+                document.getDocumentId().toString(),
+                "중개사 신청 서류 열람",
+                ipAddress,
+                userAgent,
+                List.of()
+        ));
+
+        return new AgentDocumentDownloadResponse(
+                downloadUrl,
+                PRIVATE_URL_EXPIRY_SECONDS
         );
     }
 

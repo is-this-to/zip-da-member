@@ -8,7 +8,9 @@ import com.zipdamember.domain.agent.response.AdminAgentApplicationDetailResponse
 import com.zipdamember.domain.agent.response.AdminAgentApplicationApproveResponse;
 import com.zipdamember.domain.agent.response.AdminAgentApplicationListResponse;
 import com.zipdamember.domain.agent.response.AdminAgentApplicationSupplementResponse;
+import com.zipdamember.domain.agent.response.AgentDocumentDownloadResponse;
 import com.zipdamember.domain.agent.service.AdminAgentApplicationService;
+import com.zipdamember.global.error.custom.BusinessException;
 import com.zipdamember.global.config.openapi.CustomApiResponse;
 import com.zipdamember.global.response.GlobalResponseDTO;
 import com.zipdamember.global.response.constant.CustomResponseCode;
@@ -63,6 +65,39 @@ public class AdminAgentApplicationController {
     ) {
         return ResponseEntity.ok(GlobalResponseDTO.success(
                 adminAgentApplicationService.getDetail(applicationId)
+        ));
+    }
+
+    @Operation(summary = "제출된 중개사 신청 서류의 5분 만료 Signed URL 발급")
+    @CustomApiResponse(value = {
+            CustomResponseCode.INVALID_PARAMETER_ERROR,
+            CustomResponseCode.NOT_FOUND_RESOURCE_ERROR,
+            CustomResponseCode.FILE_MANAGED_ERROR,
+            CustomResponseCode.UNAUTHENTICATED_ERROR,
+            CustomResponseCode.UNAUTHORIZED_ERROR,
+            CustomResponseCode.DB_ERROR,
+            CustomResponseCode.SYSTEM_ERROR
+    })
+    @PreAuthorize("hasAnyRole('SALES_ADMIN', 'SUPER_ADMIN')")
+    @GetMapping("/{applicationId}/documents/{documentId}/download-url")
+    public ResponseEntity<GlobalResponseDTO<AgentDocumentDownloadResponse>> getDocumentDownloadUrl(
+            @PathVariable String applicationId,
+            @PathVariable String documentId,
+            Authentication authentication,
+            jakarta.servlet.http.HttpServletRequest httpServletRequest
+    ) {
+        Long reviewerAdminId = parseIdentifier(authentication.getName(), "관리자 아이디");
+        AdminRoleCode reviewerRole = resolveReviewerRole(authentication);
+
+        return ResponseEntity.ok(GlobalResponseDTO.success(
+                adminAgentApplicationService.getDocumentDownloadUrl(
+                        parseIdentifier(applicationId, "신청 아이디"),
+                        parseIdentifier(documentId, "서류 아이디"),
+                        reviewerAdminId,
+                        reviewerRole,
+                        httpServletRequest.getRemoteAddr(),
+                        httpServletRequest.getHeader("User-Agent")
+                )
         ));
     }
 
@@ -144,5 +179,31 @@ public class AdminAgentApplicationController {
                         httpServletRequest.getHeader("User-Agent")
                 )
         ));
+    }
+
+    private AdminRoleCode resolveReviewerRole(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .map(authority -> AdminRoleCode.fromSecurityAuthority(authority.getAuthority()))
+                .flatMap(Optional::stream)
+                .filter(role -> role == AdminRoleCode.SALES_ADMIN || role == AdminRoleCode.SUPER_ADMIN)
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(
+                        CustomResponseCode.UNAUTHORIZED_ERROR,
+                        "중개사 신청 서류를 열람할 관리자 권한이 없습니다."
+                ));
+    }
+
+    private Long parseIdentifier(String value, String fieldName) {
+        try {
+            if (value == null || value.isBlank() || !value.matches("^[0-9]+$")) {
+                throw new NumberFormatException();
+            }
+            return Long.valueOf(value);
+        } catch (NumberFormatException exception) {
+            throw new BusinessException(
+                    CustomResponseCode.INVALID_PARAMETER_ERROR,
+                    fieldName + " 형식이 올바르지 않습니다."
+            );
+        }
     }
 }
