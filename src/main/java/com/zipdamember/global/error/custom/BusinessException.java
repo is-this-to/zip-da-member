@@ -15,13 +15,4 @@ public class BusinessException extends RuntimeException {
         super(message);
         this.customResponseCode = customResponseCode;
     }
-
-    public BusinessException(
-            CustomResponseCode customResponseCode,
-            String message,
-            Throwable cause
-    ) {
-        super(message, cause);
-        this.customResponseCode = customResponseCode;
-    }
 }
