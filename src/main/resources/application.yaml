@@ -2,6 +2,8 @@ server:
   port: ${APP_PORT}
 
 spring:
+  config:
+    import: "optional:file:./.env[extension=.properties][encoding=utf-8]"
   application:
     name: zip-da-member
     version: v1
