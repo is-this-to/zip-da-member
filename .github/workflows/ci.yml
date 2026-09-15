@@ -90,3 +90,6 @@ jobs:
       # production source and executable artifact until test coverage is ready.
       - name: Build executable JAR
         run: ./gradlew bootJar --no-daemon
+
+      - name: Build container image
+        run: docker build --tag zip-da-member:${{ github.sha }} .
