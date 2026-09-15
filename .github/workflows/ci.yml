@@ -1,0 +1,90 @@
+name: Member API CI
+
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: member-api-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    name: Test and build
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: zipda_member_test
+          MYSQL_USER: zipda_test
+          MYSQL_PASSWORD: zipda_test_password
+          MYSQL_ROOT_PASSWORD: root_test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot_test_password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    # All values below are disposable CI-only configuration. Do not replace
+    # them with production credentials; deployment values belong in secrets.
+    env:
+      APP_PORT: "8080"
+      APP_DESCRIPTION: "Member API CI validation"
+      DB_HOST: "127.0.0.1"
+      DB_PORT: "3306"
+      DB_NAME: "zipda_member_test"
+      DB_USER: "zipda_test"
+      DB_PASSWORD: "zipda_test_password"
+      MAIL_USER: "ci@example.invalid"
+      MAIL_PASSWORD: "ci-only-password"
+      KAKAO_CLIENT_ID: "ci-client-id"
+      KAKAO_CLIENT_SECRET: "ci-client-secret"
+      GATEWAY_URI: "http://localhost:8080"
+      FRONTENT_CALLBACK_URI: "http://localhost:5173/oauth2/callback"
+      FRONTEND_CALLBACK_URI: "http://localhost:5173/oauth2/callback"
+      JWT_SECRET: "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="
+      MINIO_ENDPOINT: "http://minio.invalid"
+      MINIO_BUCKET: "ci-bucket"
+      MINIO_ACCESS_KEY: "ci-access-key"
+      MINIO_SECRET_KEY: "ci-secret-key"
+      MINIO_PROFILE_PATH: "/profiles"
+      MOLIT_URI: "http://localhost"
+      MOLIT_API_KEY: "ci-api-key"
+      MOLIT_SERVICE_DOMAIN: "ci"
+      NTS_URI: "http://localhost"
+      NTS_API_KEY: "ci-api-key"
+      PASSWORD_RESET_FRONTEND_URI: "http://localhost:5173/reset-password"
+      PASSWORD_RESET_TOKEN_EXPIRY_MINUTES: "30"
+      ZIPDA_OCR_ENABLED: "false"
+      GOOGLE_CLOUD_PROJECT: "ci-project"
+      GOOGLE_CLOUD_VISION_INPUT_BUCKET: "ci-input"
+      GOOGLE_CLOUD_VISION_OUTPUT_BUCKET: "ci-output"
+      ZIPDA_OCR_TIMEOUT_SECONDS: "10"
+      ZIPDA_OCR_MAX_FILE_SIZE_BYTES: "1048576"
+      ZIPDA_OCR_MAX_PDF_PAGES: "1"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Run tests and build executable JAR
+        run: ./gradlew test bootJar --no-daemon
