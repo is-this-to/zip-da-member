@@ -43,6 +43,31 @@ public class MemberSanctionQueryRepository {
                 .fetchFirst() != null;
     }
 
+    public MemberSanctionScope findActiveBlockingScope(
+            Long memberId,
+            LocalDateTime baseAt
+    ) {
+        return queryFactory
+                .select(memberSanction.scope)
+                .from(memberSanction)
+                .where(
+                        memberSanction.memberId.eq(memberId),
+                        memberSanction.scope.in(
+                                MemberSanctionScope.ACCOUNT,
+                                MemberSanctionScope.PROPERTY
+                        ),
+                        memberSanction.startAt.loe(baseAt),
+                        memberSanction.releasedAt.isNull(),
+                        memberSanction.endAt.isNull()
+                                .or(memberSanction.endAt.gt(baseAt))
+                )
+                .orderBy(
+                        memberSanction.scope.asc(),
+                        memberSanction.startAt.desc()
+                )
+                .fetchFirst();
+    }
+
     public boolean existsOtherActiveByMemberIdAndScope(
             Long memberId,
             MemberSanctionScope scope,
