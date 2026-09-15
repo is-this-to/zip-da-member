@@ -5,7 +5,9 @@ import com.zipdamember.domain.member.entity.MemberAccount;
 import com.zipdamember.domain.member.repository.AdminMemberRepository;
 import com.zipdamember.domain.member.request.AdminMemberSearchRequest;
 import com.zipdamember.domain.member.response.AdminMemberResponse;
+import com.zipdamember.domain.member.service.AdminMemberSanctionService;
 import com.zipdamember.domain.member.service.AdminMemberService;
+import com.querydsl.core.types.Predicate;
 import com.zipdamember.global.error.GlobalExceptionHandler;
 import com.zipdamember.global.config.jpa.JPAWithDeleted;
 import com.zipdamember.global.config.jpa.JPAWithDeletedAspect;
@@ -48,8 +50,12 @@ class AdminMemberSearchTest {
     @EnableMethodSecurity
     static class Config {
         @Bean AdminMemberService service() { return mock(AdminMemberService.class); }
-        @Bean AdminMemberController controller(AdminMemberService service) {
-            return new AdminMemberController(service);
+        @Bean AdminMemberSanctionService sanctionService() { return mock(AdminMemberSanctionService.class); }
+        @Bean AdminMemberController controller(
+                AdminMemberService service,
+                AdminMemberSanctionService sanctionService
+        ) {
+            return new AdminMemberController(service, sanctionService);
         }
     }
 
@@ -63,7 +69,7 @@ class AdminMemberSearchTest {
             mvc.perform(get("/api/member/admin/members")).andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("00"));
             verify(context.getBean(AdminMemberService.class)).search(
-                    new AdminMemberSearchRequest(null, null, null, 0, 20));
+                    new AdminMemberSearchRequest(null, null, null, null, 0, 20));
         }
     }
 
@@ -84,7 +90,8 @@ class AdminMemberSearchTest {
     @ValueSource(strings = {"0", "101", "-1"})
     void search_invalidSize_returns400(String size) throws Exception {
         var service = mock(AdminMemberService.class);
-        var mvc = MockMvcBuilders.standaloneSetup(new AdminMemberController(service))
+        var mvc = MockMvcBuilders.standaloneSetup(new AdminMemberController(
+                        service, mock(AdminMemberSanctionService.class)))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
         mvc.perform(get("/api/member/admin/members").param("size", size))
                 .andExpect(status().isBadRequest());
@@ -94,7 +101,8 @@ class AdminMemberSearchTest {
     @Test
     void search_invalidStatus_returns400() throws Exception {
         var service = mock(AdminMemberService.class);
-        var mvc = MockMvcBuilders.standaloneSetup(new AdminMemberController(service))
+        var mvc = MockMvcBuilders.standaloneSetup(new AdminMemberController(
+                        service, mock(AdminMemberSanctionService.class)))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
         mvc.perform(get("/api/member/admin/members").param("status", "INVALID"))
                 .andExpect(status().isBadRequest());
@@ -104,8 +112,8 @@ class AdminMemberSearchTest {
     @Test
     void search_defaultsAndLiteralPattern_usesFixedSort() {
         var repository = mock(AdminMemberRepository.class);
-        when(repository.findMembers(any(), any(), any(), any())).thenAnswer(invocation -> {
-            Pageable pageable = invocation.getArgument(3);
+        when(repository.findAll(any(Predicate.class), any(Pageable.class))).thenAnswer(invocation -> {
+            Pageable pageable = invocation.getArgument(1);
             assertThat(pageable.getPageSize()).isEqualTo(20);
             assertThat(pageable.getPageNumber()).isZero();
             assertThat(pageable.getSort()).isEqualTo(
@@ -113,8 +121,10 @@ class AdminMemberSearchTest {
             return new PageImpl<MemberAccount>(List.of(), pageable, 0);
         });
         var result = new AdminMemberService(repository).search(
-                new AdminMemberSearchRequest("  a%_!  ", null, null, null, null));
-        verify(repository).findMembers(eq("%a!%!_!!%"), isNull(), isNull(), any());
+                new AdminMemberSearchRequest("  a%_!  ", null, null, null, null, null));
+        verify(repository).findAll(
+                argThat((Predicate predicate) -> predicate.toString().contains("%a!%!_!!%")),
+                any(Pageable.class));
         assertThat(result.content()).isEmpty();
         assertThat(result.totalElements()).isZero();
     }
@@ -122,12 +132,14 @@ class AdminMemberSearchTest {
     @Test
     void search_blankKeyword_omitsKeywordCondition() {
         var repository = mock(AdminMemberRepository.class);
-        when(repository.findMembers(isNull(), any(), any(), any()))
-                .thenAnswer(i -> new PageImpl<MemberAccount>(List.of(), i.getArgument(3), 0));
+        when(repository.findAll(any(Predicate.class), any(Pageable.class)))
+                .thenAnswer(i -> new PageImpl<MemberAccount>(List.of(), i.getArgument(1), 0));
         new AdminMemberService(repository).search(
-                new AdminMemberSearchRequest("   ", null, null, 1, 100));
-        verify(repository).findMembers(isNull(), isNull(), isNull(),
-                argThat(p -> p.getPageNumber() == 1 && p.getPageSize() == 100));
+                new AdminMemberSearchRequest("   ", null, null, null, 1, 100));
+        verify(repository).findAll(
+                argThat((Predicate predicate) -> predicate.toString().isBlank()),
+                argThat((Pageable pageable) -> pageable.getPageNumber() == 1
+                        && pageable.getPageSize() == 100));
     }
 
     @Test
@@ -153,9 +165,7 @@ class AdminMemberSearchTest {
         var point = mock(ProceedingJoinPoint.class);
         when(entityManager.unwrap(Session.class)).thenReturn(session);
         when(session.getEnabledFilter("softDelete")).thenReturn(mock(org.hibernate.Filter.class));
-        var annotation = AdminMemberRepository.class.getMethod("findMembers", String.class,
-                com.zipdamember.domain.member.constant.MemberStatus.class,
-                com.zipdamember.global.security.constant.MemberRolePolicy.class,
+        var annotation = AdminMemberRepository.class.getMethod("findAll", Predicate.class,
                 Pageable.class).getAnnotation(JPAWithDeleted.class);
         when(point.proceed()).thenThrow(new IllegalStateException("query failed"));
         assertThatThrownBy(() -> new JPAWithDeletedAspect(entityManager)
