@@ -116,9 +116,9 @@ logging:
   file:
     name: logs/error.log
   level:
-    root: warn
-    com.zipdamember.domain: error
-    com.zipdamember.global: error
+    root: info
+    com.zipdamember.domain: debug
+    com.zipdamember.global: debug
   pattern:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX,UTC} %-5level [%thread] [traceId=%X{traceId}] %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX,UTC} %-5level [%thread] [traceId=%X{traceId}] %logger{36} - %msg%n"
